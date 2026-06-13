@@ -4,7 +4,7 @@ export const Route = createFileRoute('/_authenticated')({
   beforeLoad: ({ location }) => {
     // TODO: Replace this with the actual auth check once auth is implemented.
     // Example: const { isAuthenticated } = useAuthStore.getState()
-    const isAuthenticated = false
+    const isAuthenticated = true
 
     if (!isAuthenticated) {
       throw redirect({
