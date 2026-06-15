@@ -63,9 +63,9 @@ const stats = [
 ]
 
 const careers = [
-  { icon: 'code', label: 'Software Engineer', sub: 'High demand â€¢ Great career growth', match: '95%', iconColor: '#00a878', bg: 'rgba(0,168,120,0.1)' },
-  { icon: 'bar_chart', label: 'Data Analyst', sub: 'High demand â€¢ Good salary', match: '90%', iconColor: '#3b82f6', bg: '#eff6ff' },
-  { icon: 'design_services', label: 'UI/UX Designer', sub: 'High growth â€¢ Creative field', match: '85%', iconColor: '#f97316', bg: '#fff7ed' },
+  { icon: 'code', label: 'Software Engineer', sub: 'High demand • Great career growth', match: '95%', iconColor: '#00a878', bg: 'rgba(0,168,120,0.1)' },
+  { icon: 'bar_chart', label: 'Data Analyst', sub: 'High demand • Good salary', match: '90%', iconColor: '#3b82f6', bg: '#eff6ff' },
+  { icon: 'design_services', label: 'UI/UX Designer', sub: 'High growth • Creative field', match: '85%', iconColor: '#f97316', bg: '#fff7ed' },
 ]
 
 const tasks = [
@@ -224,7 +224,7 @@ function Dashboard() {
         {/* Welcome */}
         <div className="flex justify-between items-start mb-8">
           <div>
-            <h2 className="text-3xl font-bold">Hello, {userName} ðŸ‘‹</h2>
+            <h2 className="text-3xl font-bold">Hello, {userName} </h2>
             <p className="text-[#50606f] text-base">What would you like to achieve today?</p>
           </div>
           <div className="bg-white p-4 rounded-xl shadow-[0px_4px_20px_rgba(0,0,0,0.04)] max-w-sm relative overflow-hidden">
@@ -232,7 +232,7 @@ function Dashboard() {
               <span className="material-symbols-outlined text-[60px] text-[#006c4c]">format_quote</span>
             </div>
             <p className="text-[13px] italic text-[#3d4a42] leading-relaxed">"The future depends on what you do today."</p>
-            <p className="text-[11px] font-bold mt-2 text-[#50606f]">â€” Mahatma Gandhi</p>
+            <p className="text-[11px] font-bold mt-2 text-[#50606f]">— Mahatma Gandhi</p>
           </div>
         </div>
 
