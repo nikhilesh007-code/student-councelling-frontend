@@ -3,6 +3,7 @@ import { authClient } from '../../../lib/auth-client'
 import { DashboardLayout } from '../../../components/layout/DashboardLayout'
 import { useState, useEffect } from 'react'
 import { calculateProfileCompletion } from '../../../lib/profile-utils'
+import { updateMockProfile } from '../../../lib/mock-data'
 
 export const Route = createFileRoute('/_authenticated/profile/')({
   component: ProfilePage,
@@ -45,27 +46,10 @@ function ProfilePage() {
       setProfile({ ...defaultProfile, ...context.profile })
       setFormData({ ...defaultProfile, ...context.profile })
       setIsLoading(false)
-    } else {
-      fetchProfile()
     }
   }, [context?.profile])
 
   const completionPercentage = context?.completionPercentage || 0;
-
-  const fetchProfile = async () => {
-    try {
-      const res = await fetch('http://localhost:3000/api/profile', { credentials: 'include' })
-      const data = await res.json()
-      if (data.success && data.data) {
-        setProfile({ ...defaultProfile, ...data.data })
-        setFormData({ ...defaultProfile, ...data.data })
-      }
-    } catch (err) {
-      console.error(err)
-    } finally {
-      setIsLoading(false)
-    }
-  }
 
   const handleSave = async () => {
     setError('')
@@ -91,23 +75,14 @@ function ProfilePage() {
         interests: interestsArray,
       }
 
-      const res = await fetch('http://localhost:3000/api/profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(payload)
-      })
-      const data = await res.json()
-      if (data.success) {
-        setProfile({ ...defaultProfile, ...data.data })
-        setFormData({ ...defaultProfile, ...data.data })
-        setIsEditing(false)
-        setSuccess('Profile updated successfully!')
-        router.invalidate() // Triggers the _authenticated loader to refetch the profile
-        setTimeout(() => setSuccess(''), 3000)
-      } else {
-        setError(data.error || 'Failed to update profile')
-      }
+      const updatedProfile = updateMockProfile(payload)
+      
+      setProfile({ ...defaultProfile, ...updatedProfile })
+      setFormData({ ...defaultProfile, ...updatedProfile })
+      setIsEditing(false)
+      setSuccess('Profile updated successfully!')
+      router.invalidate() // Triggers the _authenticated loader to refetch the profile
+      setTimeout(() => setSuccess(''), 3000)
     } catch (err) {
       setError('An error occurred while saving.')
     } finally {

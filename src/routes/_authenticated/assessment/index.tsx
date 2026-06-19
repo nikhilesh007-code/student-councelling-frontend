@@ -1,7 +1,7 @@
 import { createFileRoute, useRouteContext } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import { DashboardLayout } from '../../../components/layout/DashboardLayout'
-import { LockedState } from '../../../components/layout/LockedState'
+
 
 export const Route = createFileRoute('/_authenticated/assessment/')({
   component: AssessmentPage,
@@ -52,19 +52,9 @@ function AssessmentPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (completionPercentage >= 60) {
-      const timer = setTimeout(() => setLoading(false), 1000)
-      return () => clearTimeout(timer)
-    }
-  }, [completionPercentage])
-
-  if (completionPercentage < 60) {
-    return (
-      <DashboardLayout>
-        <LockedState />
-      </DashboardLayout>
-    )
-  }
+    const timer = setTimeout(() => setLoading(false), 1000)
+    return () => clearTimeout(timer)
+  }, [])
 
   if (loading) {
     return (

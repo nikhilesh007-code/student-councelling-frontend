@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useRouteContext } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import { DashboardLayout } from '../../../components/layout/DashboardLayout'
 
@@ -35,7 +35,12 @@ function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
-  const [profile, setProfile] = useState(MOCK_SETTINGS_DATA.profile)
+  const context = useRouteContext({ strict: false }) as any;
+  const [profile, setProfile] = useState({
+    name: context?.sessionUser?.name || MOCK_SETTINGS_DATA.profile.name,
+    email: context?.sessionUser?.email || MOCK_SETTINGS_DATA.profile.email,
+    phone: context?.profile?.phone || MOCK_SETTINGS_DATA.profile.phone
+  })
   const [notifications, setNotifications] = useState(MOCK_SETTINGS_DATA.notifications)
   const [privacy, setPrivacy] = useState(MOCK_SETTINGS_DATA.privacy)
   const [aiPrefs, setAiPrefs] = useState(MOCK_SETTINGS_DATA.aiPreferences)

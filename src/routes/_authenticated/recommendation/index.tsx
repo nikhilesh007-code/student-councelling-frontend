@@ -1,7 +1,7 @@
 import { createFileRoute, useRouteContext } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import { DashboardLayout } from '../../../components/layout/DashboardLayout'
-import { LockedState } from '../../../components/layout/LockedState'
+
 import { generateCareerRecommendations } from '../../../services/recommendation-service'
 import type { RecommendationResult, RecommendedCareer } from '../../../services/recommendation-service'
 
@@ -18,22 +18,13 @@ function CareerGuidancePage() {
   const [activeCareer, setActiveCareer] = useState<RecommendedCareer | null>(null)
   
   useEffect(() => {
-    if (completionPercentage >= 60) {
-      const recommendations = generateCareerRecommendations(profile);
-      setData(recommendations);
-      if (recommendations.topMatches.length > 0) {
-        setActiveCareer(recommendations.topMatches[0]);
-      }
+    const recommendations = generateCareerRecommendations(profile);
+    setData(recommendations);
+    if (recommendations.topMatches.length > 0) {
+      setActiveCareer(recommendations.topMatches[0]);
     }
   }, [profile, completionPercentage])
 
-  if (completionPercentage < 60) {
-    return (
-      <DashboardLayout>
-        <LockedState />
-      </DashboardLayout>
-    )
-  }
 
   if (!data || !activeCareer) {
     return (

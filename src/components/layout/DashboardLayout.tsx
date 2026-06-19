@@ -1,5 +1,4 @@
 import { Link, useNavigate, useRouteContext } from '@tanstack/react-router'
-import { authClient } from '../../lib/auth-client'
 import { useState, useEffect } from 'react'
 
 const navItems = [
@@ -20,11 +19,9 @@ const navItems = [
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate()
-  const { data: sessionData } = authClient.useSession()
   const context = useRouteContext({ strict: false }) as any;
-  const userName = sessionData?.user?.name || context?.sessionUser?.name || 'Student'
+  const userName = context?.sessionUser?.name || 'Student'
   const completionPercentage = context?.completionPercentage || 0;
-  const isLocked = completionPercentage < 60;
 
   const [isCollapsed, setIsCollapsed] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -39,15 +36,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   const sidebarWidth = isCollapsed ? 72 : 260;
 
-  const restrictedPaths = ['/dashboard', '/recommendation', '/assessment', '/roadmap', '/assistant'];
-
   const handleLogout = async () => {
-    await authClient.signOut()
+    // In mock frontend, just navigate to login
     navigate({ to: '/auth/login' })
   }
 
   return (
-    <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", backgroundColor: '#f8fafd' }} className="text-[#1c1b1b] min-w-0">
+    <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", backgroundColor: '#f8fafd' }} className="text-[#1c1b1b] min-w-0 flex flex-col min-h-screen">
       <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
       <style>{`
         .material-symbols-outlined {
@@ -78,17 +73,13 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="flex-1 overflow-y-auto sidebar-scroll space-y-2 overflow-x-hidden">
-          {navItems.map((item) => {
-            const isItemLocked = isLocked && restrictedPaths.includes(item.to);
-            const Component = item.to && !isItemLocked ? Link : 'button';
-            
-            return (
-            <Component
+          {navItems.map((item) => (
+            <Link
               key={item.label}
               to={item.to as any}
               title={isCollapsed ? item.label : undefined}
-              className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'justify-between px-3'} py-2.5 text-left rounded-lg transition-colors ${isItemLocked ? 'text-gray-400 cursor-not-allowed' : 'text-[#50606f] hover:text-[#006c4c] hover:bg-[#f6f3f2]'}`}
-              activeProps={!isItemLocked ? { className: `text-[#006c4c] font-bold ${isCollapsed ? 'bg-[#00a878]/10' : 'border-l-4 border-[#006c4c] bg-[#00a878]/10 rounded-r-lg'}`, style: { fontVariationSettings: "'FILL' 1" } } : undefined}
+              className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'justify-between px-3'} py-2.5 text-left rounded-lg transition-colors text-[#50606f] hover:text-[#006c4c] hover:bg-[#f6f3f2]`}
+              activeProps={{ className: `text-[#006c4c] font-bold ${isCollapsed ? 'bg-[#00a878]/10' : 'border-l-4 border-[#006c4c] bg-[#00a878]/10 rounded-r-lg'}`, style: { fontVariationSettings: "'FILL' 1" } }}
             >
               <div className="flex items-center gap-3">
                 <span className="material-symbols-outlined text-[20px]">
@@ -96,11 +87,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 </span>
                 {!isCollapsed && <span className="text-sm whitespace-nowrap">{item.label}</span>}
               </div>
-              {!isCollapsed && isItemLocked && (
-                <span className="material-symbols-outlined text-[16px] text-gray-300">lock</span>
-              )}
-            </Component>
-          )})}
+            </Link>
+          ))}
         </nav>
 
         <div className="mt-auto pt-4 border-t border-[#bccac0]/20 space-y-2">
@@ -156,10 +144,23 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main style={{ marginLeft: sidebarWidth }} className="mt-16 p-8 min-h-screen transition-all duration-300 ease-in-out ml-0 md:ml-auto">
-        {children}
-      </main>
+      {/* Main Content Area */}
+      <div style={{ marginLeft: sidebarWidth }} className="mt-16 flex flex-col transition-all duration-300 ease-in-out ml-0 md:ml-auto flex-1">
+        {completionPercentage < 100 && (
+          <div className="bg-[#fff8e1] border-b border-[#ffe082] px-8 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-3 text-[#50606f] text-sm font-medium">
+              <span className="material-symbols-outlined text-[#ff8f00] text-[20px]">info</span>
+              Complete your profile to receive better recommendations.
+            </div>
+            <Link to="/profile" className="text-[#006c4c] font-bold text-sm hover:underline">
+              Complete Profile
+            </Link>
+          </div>
+        )}
+        <main className="p-8 flex-1">
+          {children}
+        </main>
+      </div>
     </div>
   )
 }

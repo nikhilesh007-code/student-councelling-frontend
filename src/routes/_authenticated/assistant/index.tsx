@@ -1,7 +1,7 @@
 import { createFileRoute, useRouteContext } from '@tanstack/react-router'
 import { useState, useEffect, useRef } from 'react'
 import { DashboardLayout } from '../../../components/layout/DashboardLayout'
-import { LockedState } from '../../../components/layout/LockedState'
+
 
 export const Route = createFileRoute('/_authenticated/assistant/')({
   component: AssistantPage,
@@ -46,7 +46,13 @@ function AssistantPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [inputText, setInputText] = useState('')
   const [isTyping, setIsTyping] = useState(false)
+  const [loading, setLoading] = useState(true)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 800)
+    return () => clearTimeout(timer)
+  }, [])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -56,13 +62,6 @@ function AssistantPage() {
     scrollToBottom()
   }, [messages, isTyping])
 
-  if (completionPercentage < 60) {
-    return (
-      <DashboardLayout>
-        <LockedState />
-      </DashboardLayout>
-    )
-  }
 
   // Future Integration Preparation: This function is structured to be easily 
   // replaced by Ollama, Gemini API, OpenAI, or a LangGraph backend.

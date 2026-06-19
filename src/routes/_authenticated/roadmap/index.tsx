@@ -1,7 +1,7 @@
 import { createFileRoute, useRouteContext } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import { DashboardLayout } from '../../../components/layout/DashboardLayout'
-import { LockedState } from '../../../components/layout/LockedState'
+
 
 export const Route = createFileRoute('/_authenticated/roadmap/')({
   component: RoadmapPage,
@@ -108,23 +108,15 @@ function RoadmapPage() {
   })
 
   useEffect(() => {
-    if (completionPercentage >= 60) {
-      const timer = setTimeout(() => setLoading(false), 1200)
-      return () => clearTimeout(timer)
-    }
-  }, [completionPercentage])
+    const timer = setTimeout(() => setLoading(false), 1200)
+    return () => clearTimeout(timer)
+  }, [])
 
   const togglePhase = (id: number) => {
     setExpandedPhases(prev => ({ ...prev, [id]: !prev[id] }))
   }
 
-  if (completionPercentage < 60) {
-    return (
-      <DashboardLayout>
-        <LockedState />
-      </DashboardLayout>
-    )
-  }
+
 
   if (loading) {
     return (

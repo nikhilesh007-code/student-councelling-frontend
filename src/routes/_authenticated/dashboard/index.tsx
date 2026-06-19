@@ -1,7 +1,7 @@
 import { createFileRoute, useRouteContext } from '@tanstack/react-router'
 import { authClient } from '../../../lib/auth-client'
 import { DashboardLayout } from '../../../components/layout/DashboardLayout'
-import { LockedState } from '../../../components/layout/LockedState'
+
 
 export const Route = createFileRoute('/_authenticated/dashboard/')({
   component: Dashboard,
@@ -91,13 +91,6 @@ function Dashboard() {
   const userName = sessionData?.name || 'Student'
   const completionPercentage = context?.completionPercentage || 0;
 
-  if (completionPercentage < 60) {
-    return (
-      <DashboardLayout>
-        <LockedState />
-      </DashboardLayout>
-    )
-  }
 
   return (
     <DashboardLayout>
