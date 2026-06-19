@@ -14,8 +14,24 @@ import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PublicHomeRouteImport } from './routes/_public/home'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthResetPasswordIndexRouteImport } from './routes/auth/reset-password/index'
+import { Route as AuthRegisterIndexRouteImport } from './routes/auth/register/index'
 import { Route as AuthLoginIndexRouteImport } from './routes/auth/login/index'
+import { Route as AuthForgotPasswordIndexRouteImport } from './routes/auth/forgot-password/index'
+import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings/index'
+import { Route as AuthenticatedRoadmapIndexRouteImport } from './routes/_authenticated/roadmap/index'
+import { Route as AuthenticatedResumeIndexRouteImport } from './routes/_authenticated/resume/index'
+import { Route as AuthenticatedResourcesIndexRouteImport } from './routes/_authenticated/resources/index'
+import { Route as AuthenticatedRecommendationIndexRouteImport } from './routes/_authenticated/recommendation/index'
+import { Route as AuthenticatedProgressIndexRouteImport } from './routes/_authenticated/progress/index'
+import { Route as AuthenticatedProfileIndexRouteImport } from './routes/_authenticated/profile/index'
+import { Route as AuthenticatedPlannerIndexRouteImport } from './routes/_authenticated/planner/index'
+import { Route as AuthenticatedPlacementIndexRouteImport } from './routes/_authenticated/placement/index'
+import { Route as AuthenticatedOpportunitiesIndexRouteImport } from './routes/_authenticated/opportunities/index'
+import { Route as AuthenticatedMentorshipIndexRouteImport } from './routes/_authenticated/mentorship/index'
 import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard/index'
+import { Route as AuthenticatedAssistantIndexRouteImport } from './routes/_authenticated/assistant/index'
+import { Route as AuthenticatedAssessmentIndexRouteImport } from './routes/_authenticated/assessment/index'
 
 const PublicRoute = PublicRouteImport.update({
   id: '/_public',
@@ -40,30 +56,155 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRoute,
 } as any)
+const AuthResetPasswordIndexRoute = AuthResetPasswordIndexRouteImport.update({
+  id: '/auth/reset-password/',
+  path: '/auth/reset-password/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRegisterIndexRoute = AuthRegisterIndexRouteImport.update({
+  id: '/auth/register/',
+  path: '/auth/register/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthLoginIndexRoute = AuthLoginIndexRouteImport.update({
   id: '/auth/login/',
   path: '/auth/login/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthForgotPasswordIndexRoute = AuthForgotPasswordIndexRouteImport.update({
+  id: '/auth/forgot-password/',
+  path: '/auth/forgot-password/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedSettingsIndexRoute =
+  AuthenticatedSettingsIndexRouteImport.update({
+    id: '/settings/',
+    path: '/settings/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedRoadmapIndexRoute =
+  AuthenticatedRoadmapIndexRouteImport.update({
+    id: '/roadmap/',
+    path: '/roadmap/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedResumeIndexRoute =
+  AuthenticatedResumeIndexRouteImport.update({
+    id: '/resume/',
+    path: '/resume/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedResourcesIndexRoute =
+  AuthenticatedResourcesIndexRouteImport.update({
+    id: '/resources/',
+    path: '/resources/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedRecommendationIndexRoute =
+  AuthenticatedRecommendationIndexRouteImport.update({
+    id: '/recommendation/',
+    path: '/recommendation/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedProgressIndexRoute =
+  AuthenticatedProgressIndexRouteImport.update({
+    id: '/progress/',
+    path: '/progress/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedProfileIndexRoute =
+  AuthenticatedProfileIndexRouteImport.update({
+    id: '/profile/',
+    path: '/profile/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedPlannerIndexRoute =
+  AuthenticatedPlannerIndexRouteImport.update({
+    id: '/planner/',
+    path: '/planner/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedPlacementIndexRoute =
+  AuthenticatedPlacementIndexRouteImport.update({
+    id: '/placement/',
+    path: '/placement/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedOpportunitiesIndexRoute =
+  AuthenticatedOpportunitiesIndexRouteImport.update({
+    id: '/opportunities/',
+    path: '/opportunities/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedMentorshipIndexRoute =
+  AuthenticatedMentorshipIndexRouteImport.update({
+    id: '/mentorship/',
+    path: '/mentorship/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedDashboardIndexRoute =
   AuthenticatedDashboardIndexRouteImport.update({
     id: '/',
     path: '/',
     getParentRoute: () => AuthenticatedDashboardRoute,
   } as any)
+const AuthenticatedAssistantIndexRoute =
+  AuthenticatedAssistantIndexRouteImport.update({
+    id: '/assistant/',
+    path: '/assistant/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedAssessmentIndexRoute =
+  AuthenticatedAssessmentIndexRouteImport.update({
+    id: '/assessment/',
+    path: '/assessment/',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof AuthenticatedDashboardRouteWithChildren
   '/home': typeof PublicHomeRoute
+  '/assessment/': typeof AuthenticatedAssessmentIndexRoute
+  '/assistant/': typeof AuthenticatedAssistantIndexRoute
   '/dashboard/': typeof AuthenticatedDashboardIndexRoute
+  '/mentorship/': typeof AuthenticatedMentorshipIndexRoute
+  '/opportunities/': typeof AuthenticatedOpportunitiesIndexRoute
+  '/placement/': typeof AuthenticatedPlacementIndexRoute
+  '/planner/': typeof AuthenticatedPlannerIndexRoute
+  '/profile/': typeof AuthenticatedProfileIndexRoute
+  '/progress/': typeof AuthenticatedProgressIndexRoute
+  '/recommendation/': typeof AuthenticatedRecommendationIndexRoute
+  '/resources/': typeof AuthenticatedResourcesIndexRoute
+  '/resume/': typeof AuthenticatedResumeIndexRoute
+  '/roadmap/': typeof AuthenticatedRoadmapIndexRoute
+  '/settings/': typeof AuthenticatedSettingsIndexRoute
+  '/auth/forgot-password/': typeof AuthForgotPasswordIndexRoute
   '/auth/login/': typeof AuthLoginIndexRoute
+  '/auth/register/': typeof AuthRegisterIndexRoute
+  '/auth/reset-password/': typeof AuthResetPasswordIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/home': typeof PublicHomeRoute
+  '/assessment': typeof AuthenticatedAssessmentIndexRoute
+  '/assistant': typeof AuthenticatedAssistantIndexRoute
   '/dashboard': typeof AuthenticatedDashboardIndexRoute
+  '/mentorship': typeof AuthenticatedMentorshipIndexRoute
+  '/opportunities': typeof AuthenticatedOpportunitiesIndexRoute
+  '/placement': typeof AuthenticatedPlacementIndexRoute
+  '/planner': typeof AuthenticatedPlannerIndexRoute
+  '/profile': typeof AuthenticatedProfileIndexRoute
+  '/progress': typeof AuthenticatedProgressIndexRoute
+  '/recommendation': typeof AuthenticatedRecommendationIndexRoute
+  '/resources': typeof AuthenticatedResourcesIndexRoute
+  '/resume': typeof AuthenticatedResumeIndexRoute
+  '/roadmap': typeof AuthenticatedRoadmapIndexRoute
+  '/settings': typeof AuthenticatedSettingsIndexRoute
+  '/auth/forgot-password': typeof AuthForgotPasswordIndexRoute
   '/auth/login': typeof AuthLoginIndexRoute
+  '/auth/register': typeof AuthRegisterIndexRoute
+  '/auth/reset-password': typeof AuthResetPasswordIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -72,14 +213,71 @@ export interface FileRoutesById {
   '/_public': typeof PublicRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRouteWithChildren
   '/_public/home': typeof PublicHomeRoute
+  '/_authenticated/assessment/': typeof AuthenticatedAssessmentIndexRoute
+  '/_authenticated/assistant/': typeof AuthenticatedAssistantIndexRoute
   '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
+  '/_authenticated/mentorship/': typeof AuthenticatedMentorshipIndexRoute
+  '/_authenticated/opportunities/': typeof AuthenticatedOpportunitiesIndexRoute
+  '/_authenticated/placement/': typeof AuthenticatedPlacementIndexRoute
+  '/_authenticated/planner/': typeof AuthenticatedPlannerIndexRoute
+  '/_authenticated/profile/': typeof AuthenticatedProfileIndexRoute
+  '/_authenticated/progress/': typeof AuthenticatedProgressIndexRoute
+  '/_authenticated/recommendation/': typeof AuthenticatedRecommendationIndexRoute
+  '/_authenticated/resources/': typeof AuthenticatedResourcesIndexRoute
+  '/_authenticated/resume/': typeof AuthenticatedResumeIndexRoute
+  '/_authenticated/roadmap/': typeof AuthenticatedRoadmapIndexRoute
+  '/_authenticated/settings/': typeof AuthenticatedSettingsIndexRoute
+  '/auth/forgot-password/': typeof AuthForgotPasswordIndexRoute
   '/auth/login/': typeof AuthLoginIndexRoute
+  '/auth/register/': typeof AuthRegisterIndexRoute
+  '/auth/reset-password/': typeof AuthResetPasswordIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/dashboard' | '/home' | '/dashboard/' | '/auth/login/'
+  fullPaths:
+    | '/'
+    | '/dashboard'
+    | '/home'
+    | '/assessment/'
+    | '/assistant/'
+    | '/dashboard/'
+    | '/mentorship/'
+    | '/opportunities/'
+    | '/placement/'
+    | '/planner/'
+    | '/profile/'
+    | '/progress/'
+    | '/recommendation/'
+    | '/resources/'
+    | '/resume/'
+    | '/roadmap/'
+    | '/settings/'
+    | '/auth/forgot-password/'
+    | '/auth/login/'
+    | '/auth/register/'
+    | '/auth/reset-password/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/home' | '/dashboard' | '/auth/login'
+  to:
+    | '/'
+    | '/home'
+    | '/assessment'
+    | '/assistant'
+    | '/dashboard'
+    | '/mentorship'
+    | '/opportunities'
+    | '/placement'
+    | '/planner'
+    | '/profile'
+    | '/progress'
+    | '/recommendation'
+    | '/resources'
+    | '/resume'
+    | '/roadmap'
+    | '/settings'
+    | '/auth/forgot-password'
+    | '/auth/login'
+    | '/auth/register'
+    | '/auth/reset-password'
   id:
     | '__root__'
     | '/'
@@ -87,15 +285,34 @@ export interface FileRouteTypes {
     | '/_public'
     | '/_authenticated/dashboard'
     | '/_public/home'
+    | '/_authenticated/assessment/'
+    | '/_authenticated/assistant/'
     | '/_authenticated/dashboard/'
+    | '/_authenticated/mentorship/'
+    | '/_authenticated/opportunities/'
+    | '/_authenticated/placement/'
+    | '/_authenticated/planner/'
+    | '/_authenticated/profile/'
+    | '/_authenticated/progress/'
+    | '/_authenticated/recommendation/'
+    | '/_authenticated/resources/'
+    | '/_authenticated/resume/'
+    | '/_authenticated/roadmap/'
+    | '/_authenticated/settings/'
+    | '/auth/forgot-password/'
     | '/auth/login/'
+    | '/auth/register/'
+    | '/auth/reset-password/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
   PublicRoute: typeof PublicRouteWithChildren
+  AuthForgotPasswordIndexRoute: typeof AuthForgotPasswordIndexRoute
   AuthLoginIndexRoute: typeof AuthLoginIndexRoute
+  AuthRegisterIndexRoute: typeof AuthRegisterIndexRoute
+  AuthResetPasswordIndexRoute: typeof AuthResetPasswordIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -135,6 +352,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/auth/reset-password/': {
+      id: '/auth/reset-password/'
+      path: '/auth/reset-password'
+      fullPath: '/auth/reset-password/'
+      preLoaderRoute: typeof AuthResetPasswordIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/register/': {
+      id: '/auth/register/'
+      path: '/auth/register'
+      fullPath: '/auth/register/'
+      preLoaderRoute: typeof AuthRegisterIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth/login/': {
       id: '/auth/login/'
       path: '/auth/login'
@@ -142,12 +373,110 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthLoginIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/forgot-password/': {
+      id: '/auth/forgot-password/'
+      path: '/auth/forgot-password'
+      fullPath: '/auth/forgot-password/'
+      preLoaderRoute: typeof AuthForgotPasswordIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/settings/': {
+      id: '/_authenticated/settings/'
+      path: '/settings'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof AuthenticatedSettingsIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/roadmap/': {
+      id: '/_authenticated/roadmap/'
+      path: '/roadmap'
+      fullPath: '/roadmap/'
+      preLoaderRoute: typeof AuthenticatedRoadmapIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/resume/': {
+      id: '/_authenticated/resume/'
+      path: '/resume'
+      fullPath: '/resume/'
+      preLoaderRoute: typeof AuthenticatedResumeIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/resources/': {
+      id: '/_authenticated/resources/'
+      path: '/resources'
+      fullPath: '/resources/'
+      preLoaderRoute: typeof AuthenticatedResourcesIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/recommendation/': {
+      id: '/_authenticated/recommendation/'
+      path: '/recommendation'
+      fullPath: '/recommendation/'
+      preLoaderRoute: typeof AuthenticatedRecommendationIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/progress/': {
+      id: '/_authenticated/progress/'
+      path: '/progress'
+      fullPath: '/progress/'
+      preLoaderRoute: typeof AuthenticatedProgressIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/profile/': {
+      id: '/_authenticated/profile/'
+      path: '/profile'
+      fullPath: '/profile/'
+      preLoaderRoute: typeof AuthenticatedProfileIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/planner/': {
+      id: '/_authenticated/planner/'
+      path: '/planner'
+      fullPath: '/planner/'
+      preLoaderRoute: typeof AuthenticatedPlannerIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/placement/': {
+      id: '/_authenticated/placement/'
+      path: '/placement'
+      fullPath: '/placement/'
+      preLoaderRoute: typeof AuthenticatedPlacementIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/opportunities/': {
+      id: '/_authenticated/opportunities/'
+      path: '/opportunities'
+      fullPath: '/opportunities/'
+      preLoaderRoute: typeof AuthenticatedOpportunitiesIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/mentorship/': {
+      id: '/_authenticated/mentorship/'
+      path: '/mentorship'
+      fullPath: '/mentorship/'
+      preLoaderRoute: typeof AuthenticatedMentorshipIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/dashboard/': {
       id: '/_authenticated/dashboard/'
       path: '/'
       fullPath: '/dashboard/'
       preLoaderRoute: typeof AuthenticatedDashboardIndexRouteImport
       parentRoute: typeof AuthenticatedDashboardRoute
+    }
+    '/_authenticated/assistant/': {
+      id: '/_authenticated/assistant/'
+      path: '/assistant'
+      fullPath: '/assistant/'
+      preLoaderRoute: typeof AuthenticatedAssistantIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/assessment/': {
+      id: '/_authenticated/assessment/'
+      path: '/assessment'
+      fullPath: '/assessment/'
+      preLoaderRoute: typeof AuthenticatedAssessmentIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
     }
   }
 }
@@ -168,10 +497,36 @@ const AuthenticatedDashboardRouteWithChildren =
 
 interface AuthenticatedRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRouteWithChildren
+  AuthenticatedAssessmentIndexRoute: typeof AuthenticatedAssessmentIndexRoute
+  AuthenticatedAssistantIndexRoute: typeof AuthenticatedAssistantIndexRoute
+  AuthenticatedMentorshipIndexRoute: typeof AuthenticatedMentorshipIndexRoute
+  AuthenticatedOpportunitiesIndexRoute: typeof AuthenticatedOpportunitiesIndexRoute
+  AuthenticatedPlacementIndexRoute: typeof AuthenticatedPlacementIndexRoute
+  AuthenticatedPlannerIndexRoute: typeof AuthenticatedPlannerIndexRoute
+  AuthenticatedProfileIndexRoute: typeof AuthenticatedProfileIndexRoute
+  AuthenticatedProgressIndexRoute: typeof AuthenticatedProgressIndexRoute
+  AuthenticatedRecommendationIndexRoute: typeof AuthenticatedRecommendationIndexRoute
+  AuthenticatedResourcesIndexRoute: typeof AuthenticatedResourcesIndexRoute
+  AuthenticatedResumeIndexRoute: typeof AuthenticatedResumeIndexRoute
+  AuthenticatedRoadmapIndexRoute: typeof AuthenticatedRoadmapIndexRoute
+  AuthenticatedSettingsIndexRoute: typeof AuthenticatedSettingsIndexRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRouteWithChildren,
+  AuthenticatedAssessmentIndexRoute: AuthenticatedAssessmentIndexRoute,
+  AuthenticatedAssistantIndexRoute: AuthenticatedAssistantIndexRoute,
+  AuthenticatedMentorshipIndexRoute: AuthenticatedMentorshipIndexRoute,
+  AuthenticatedOpportunitiesIndexRoute: AuthenticatedOpportunitiesIndexRoute,
+  AuthenticatedPlacementIndexRoute: AuthenticatedPlacementIndexRoute,
+  AuthenticatedPlannerIndexRoute: AuthenticatedPlannerIndexRoute,
+  AuthenticatedProfileIndexRoute: AuthenticatedProfileIndexRoute,
+  AuthenticatedProgressIndexRoute: AuthenticatedProgressIndexRoute,
+  AuthenticatedRecommendationIndexRoute: AuthenticatedRecommendationIndexRoute,
+  AuthenticatedResourcesIndexRoute: AuthenticatedResourcesIndexRoute,
+  AuthenticatedResumeIndexRoute: AuthenticatedResumeIndexRoute,
+  AuthenticatedRoadmapIndexRoute: AuthenticatedRoadmapIndexRoute,
+  AuthenticatedSettingsIndexRoute: AuthenticatedSettingsIndexRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
@@ -193,7 +548,10 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
   PublicRoute: PublicRouteWithChildren,
+  AuthForgotPasswordIndexRoute: AuthForgotPasswordIndexRoute,
   AuthLoginIndexRoute: AuthLoginIndexRoute,
+  AuthRegisterIndexRoute: AuthRegisterIndexRoute,
+  AuthResetPasswordIndexRoute: AuthResetPasswordIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
