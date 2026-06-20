@@ -18,12 +18,117 @@ function CareerGuidancePage() {
   const [activeCareer, setActiveCareer] = useState<RecommendedCareer | null>(null)
   
   useEffect(() => {
-    const recommendations = generateCareerRecommendations(profile);
-    setData(recommendations);
-    if (recommendations.topMatches.length > 0) {
-      setActiveCareer(recommendations.topMatches[0]);
+  const loadRecommendations = async () => {
+    try {
+      const session = await fetch(
+        "http://localhost:3000/api/auth/get-session",
+        {
+          credentials: "include",
+        }
+      ).then((r) => r.json());
+
+      const userId = session?.user?.id;
+
+      if (!userId) return;
+
+      const skillGap = await fetch(
+        "http://localhost:3000/api/skill-gap/analyze",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({ userId }),
+        }
+      ).then((r) => r.json());
+
+      let guidanceText = "Career guidance not available";
+
+try {
+  const guidanceResponse = await fetch(
+    "http://localhost:3000/api/career-guidance",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
+      body: JSON.stringify({ userId }),
     }
-  }, [profile, completionPercentage])
+  );
+
+  const guidance = await guidanceResponse.json();
+
+  if (guidance.success) {
+    guidanceText = guidance.guidance;
+  }
+
+  console.log(guidance);
+} catch (error) {
+  console.error("Career guidance failed:", error);
+}
+
+      setData({
+  topMatches: [
+    {
+      id: 1,
+      title: skillGap.career,
+      matchScore: skillGap.readinessScore,
+      averageSalary: "₹8 - 15 LPA",
+      demandLevel: "High",
+      jobGrowth: "Excellent",
+      requiredSkills: skillGap.matchedSkills,
+      recommendedSkills: skillGap.missingSkills,
+      recommendedCertifications: [],
+      topIndustries: ["IT", "Software"],
+      tags: ["AI Recommended"],
+      icon: "code",
+      colorClass: "text-emerald-500 bg-emerald-50",
+    },
+  ],
+  otherOptions: [],
+ aiRecommendation: {
+  career: skillGap.career,
+  reasons: [
+    `Readiness Score: ${skillGap.readinessScore}%`,
+    `Gap Score: ${skillGap.gapScore}%`,
+    `Matched Skills: ${skillGap.matchedSkills.join(", ")}`,
+  ],
+},
+  roadmap: [
+    {
+      step: 1,
+      title: "Learn Missing Skills",
+      desc: skillGap.missingSkills.join(", "),
+      color: "bg-emerald-500",
+    },
+  ],
+});
+
+setActiveCareer({
+  id: 1,
+  title: skillGap.career,
+  matchScore: skillGap.readinessScore,
+  averageSalary: "₹8 - 15 LPA",
+  demandLevel: "High",
+  jobGrowth: "Excellent",
+  requiredSkills: skillGap.matchedSkills,
+  recommendedSkills: skillGap.missingSkills,
+  recommendedCertifications: [],
+  topIndustries: ["IT", "Software"],
+  tags: ["AI Recommended"],
+  icon: "code",
+  colorClass: "text-emerald-500 bg-emerald-50",
+});
+
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  loadRecommendations();
+}, []);
 
 
   if (!data || !activeCareer) {
@@ -259,13 +364,21 @@ function CareerGuidancePage() {
              <div className="space-y-4 relative z-10 bg-white/60 p-5 rounded-2xl backdrop-blur-sm">
                <p className="text-sm font-extrabold text-slate-900">Why this career?</p>
                <ul className="space-y-3">
-                 {data.aiRecommendation.reasons.map((reason, idx) => (
-                   <li key={idx} className="flex items-start gap-3 text-xs text-slate-700 font-medium leading-snug">
-                     <span className="w-5 h-5 shrink-0 bg-[#00a878]/10 text-[#00a878] rounded-full flex items-center justify-center text-[10px] mt-px">✔</span> 
-                     {reason}
-                   </li>
-                 ))}
-               </ul>
+  {data.aiRecommendation.reasons.map((reason, idx) => (
+    <li
+      key={idx}
+      className="flex items-start gap-3 text-xs text-slate-700 font-medium leading-snug"
+    >
+      <span className="w-5 h-5 shrink-0 bg-[#00a878]/10 text-[#00a878] rounded-full flex items-center justify-center text-[10px] mt-px">
+        ✔
+      </span>
+
+      <div className="whitespace-pre-wrap break-words">
+        {reason}
+      </div>
+    </li>
+  ))}
+</ul>
              </div>
            </section>
 

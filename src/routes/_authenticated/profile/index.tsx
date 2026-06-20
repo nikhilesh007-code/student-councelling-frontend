@@ -3,7 +3,7 @@ import { authClient } from '../../../lib/auth-client'
 import { DashboardLayout } from '../../../components/layout/DashboardLayout'
 import { useState, useEffect } from 'react'
 import { calculateProfileCompletion } from '../../../lib/profile-utils'
-import { updateMockProfile } from '../../../lib/mock-data'
+
 
 export const Route = createFileRoute('/_authenticated/profile/')({
   component: ProfilePage,
@@ -75,10 +75,41 @@ function ProfilePage() {
         interests: interestsArray,
       }
 
-      const updatedProfile = updateMockProfile(payload)
-      
-      setProfile({ ...defaultProfile, ...updatedProfile })
-      setFormData({ ...defaultProfile, ...updatedProfile })
+      const response = await fetch(
+  "http://localhost:3000/api/profile",
+  {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    credentials: "include",
+    body: JSON.stringify({
+      userId: sessionData?.user?.id,
+      branch: payload.branch,
+      year: Number(payload.year),
+      cgpa: 8.5,
+      skills: payload.skills,
+      interests: payload.interests,
+      careerGoal: payload.careerGoal,
+    }),
+  }
+);
+
+const result = await response.json();
+
+if (!result.success) {
+  throw new Error("Profile update failed");
+}
+
+setProfile({
+  ...defaultProfile,
+  ...result.data,
+});
+
+setFormData({
+  ...defaultProfile,
+  ...result.data,
+});
       setIsEditing(false)
       setSuccess('Profile updated successfully!')
       router.invalidate() // Triggers the _authenticated loader to refetch the profile

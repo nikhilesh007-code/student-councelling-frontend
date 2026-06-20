@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet } from '@tanstack/react-router'
 import { calculateProfileCompletion } from '../lib/profile-utils'
 import type { ProfileData } from '../lib/profile-utils'
-import { getMockProfile, mockSessionUser } from '../lib/mock-data'
+import { getMockProfile } from '../lib/mock-data'
 
 type AuthenticatedContext = {
   profile: ProfileData | null;
@@ -12,7 +12,16 @@ type AuthenticatedContext = {
 export const Route = createFileRoute('/_authenticated')({
   beforeLoad: async ({ location }): Promise<AuthenticatedContext> => {
     // 1. Frontend-only mode: Remove Better Auth session fetch, use mock user directly
-    const sessionUser = mockSessionUser;
+    const sessionResponse = await fetch(
+  "http://localhost:3000/api/auth/get-session",
+  {
+    credentials: "include",
+  }
+);
+
+const sessionData = await sessionResponse.json();
+
+const sessionUser = sessionData?.user ?? null;
 
     // 2. Fetch mock profile instead of API endpoint
     let profileData: ProfileData | null = null;
