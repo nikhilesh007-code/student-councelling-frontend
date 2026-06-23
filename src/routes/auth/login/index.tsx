@@ -23,35 +23,59 @@ function CareerAILogin() {
 
  const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault()
+  console.log('[LOGIN CLICK]')
   setError('')
   setIsLoading(true)
 
-  const { data, error: signInError } = await authClient.signIn.email({ 
-    email, 
-    password,
-    rememberMe
-  })
-  
-  setIsLoading(false)
-  
-  if (signInError) {
-    setError(signInError.message || 'Login failed')
-  } else {
-    if (search.redirect) {
-      window.location.href = search.redirect
+  try {
+    console.log('[REQUEST SENT]')
+    // The authClient.signIn.email implicitly sends a POST to the Better Auth backend
+    const response = await authClient.signIn.email({ 
+      email, 
+      password,
+      rememberMe
+    })
+    console.log('[RESPONSE RECEIVED]', response)
+    
+    const { data, error: signInError } = response;
+    
+    if (signInError) {
+      setError(signInError.message || 'Login failed')
     } else {
-      navigate({ to: '/dashboard' })
+      console.log('[SESSION CREATED]', (data as any)?.session)
+      console.log('[COOKIE RECEIVED]') // Actually fetched automatically by browser, assuming success means cookies are set
+      console.log('[REDIRECT START]')
+      if (search.redirect) {
+        window.location.href = search.redirect
+      } else {
+        navigate({ to: '/dashboard' })
+      }
+      console.log('[REDIRECT COMPLETE]')
     }
+  } catch (err) {
+    setError('An unexpected error occurred during login.')
+  } finally {
+    setIsLoading(false)
   }
 }
 
   const handleGoogleLogin = async () => {
+    console.log('[LOGIN START]')
     setIsLoading(true)
-    await authClient.signIn.social({
-      provider: 'google',
-      callbackURL: search.redirect ? `${window.location.origin}${search.redirect}` : `${window.location.origin}/dashboard`
-    })
-    setIsLoading(false)
+    try {
+      console.log('[LOGIN REQUEST SENT]')
+      const response = await authClient.signIn.social({
+        provider: 'google',
+        callbackURL: search.redirect ? `${window.location.origin}${search.redirect}` : `${window.location.origin}/dashboard`
+      })
+      console.log('[LOGIN RESPONSE]', response)
+      console.log('[LOGIN SUCCESS]')
+    } catch (err) {
+      console.log('[LOGIN ERROR]', err)
+    } finally {
+      console.log('[LOGIN FINALLY]')
+      setIsLoading(false)
+    }
   }
 
   return (

@@ -372,18 +372,15 @@ function RoadmapPage() {
               </ul>
             </div>
 
-            {/* Need Help Banner */}
-            <div className="bg-orange-50/50 rounded-2xl p-5 flex items-center gap-4 border border-orange-100 min-w-0">
-              <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center text-orange-600 flex-shrink-0">
-                <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>support_agent</span>
+            {/* Roadmap Tips Banner */}
+            <div className="bg-blue-50/50 rounded-2xl p-5 flex items-center gap-4 border border-blue-100 min-w-0">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 flex-shrink-0">
+                <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>lightbulb</span>
               </div>
               <div className="flex-1 min-w-0">
-                <h4 className="font-extrabold text-slate-900 text-[14px] mb-0.5 truncate">Need Help?</h4>
-                <p className="text-[12px] font-medium text-slate-600 truncate">Get guidance from our AI.</p>
+                <h4 className="font-extrabold text-slate-900 text-[14px] mb-0.5 truncate">Roadmap Tip</h4>
+                <p className="text-[12px] font-medium text-slate-600 truncate">Consistency is key! Completing this phase will significantly boost your readiness score.</p>
               </div>
-              <button className="text-[#00a878] text-[13px] font-extrabold whitespace-nowrap flex items-center gap-1 hover:underline">
-                Ask CareerAI <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-              </button>
             </div>
 
           </div>

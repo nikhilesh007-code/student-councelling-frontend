@@ -30,8 +30,9 @@ import { Route as AuthenticatedPlacementIndexRouteImport } from './routes/_authe
 import { Route as AuthenticatedOpportunitiesIndexRouteImport } from './routes/_authenticated/opportunities/index'
 import { Route as AuthenticatedMentorshipIndexRouteImport } from './routes/_authenticated/mentorship/index'
 import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard/index'
-import { Route as AuthenticatedAssistantIndexRouteImport } from './routes/_authenticated/assistant/index'
+import { Route as AuthenticatedCareersIndexRouteImport } from './routes/_authenticated/careers/index'
 import { Route as AuthenticatedAssessmentIndexRouteImport } from './routes/_authenticated/assessment/index'
+import { Route as AuthenticatedCareersCareerIdRouteImport } from './routes/_authenticated/careers/$careerId'
 
 const PublicRoute = PublicRouteImport.update({
   id: '/_public',
@@ -148,10 +149,10 @@ const AuthenticatedDashboardIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedDashboardRoute,
   } as any)
-const AuthenticatedAssistantIndexRoute =
-  AuthenticatedAssistantIndexRouteImport.update({
-    id: '/assistant/',
-    path: '/assistant/',
+const AuthenticatedCareersIndexRoute =
+  AuthenticatedCareersIndexRouteImport.update({
+    id: '/careers/',
+    path: '/careers/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedAssessmentIndexRoute =
@@ -160,13 +161,20 @@ const AuthenticatedAssessmentIndexRoute =
     path: '/assessment/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedCareersCareerIdRoute =
+  AuthenticatedCareersCareerIdRouteImport.update({
+    id: '/careers/$careerId',
+    path: '/careers/$careerId',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof AuthenticatedDashboardRouteWithChildren
   '/home': typeof PublicHomeRoute
+  '/careers/$careerId': typeof AuthenticatedCareersCareerIdRoute
   '/assessment/': typeof AuthenticatedAssessmentIndexRoute
-  '/assistant/': typeof AuthenticatedAssistantIndexRoute
+  '/careers/': typeof AuthenticatedCareersIndexRoute
   '/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/mentorship/': typeof AuthenticatedMentorshipIndexRoute
   '/opportunities/': typeof AuthenticatedOpportunitiesIndexRoute
@@ -187,8 +195,9 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/home': typeof PublicHomeRoute
+  '/careers/$careerId': typeof AuthenticatedCareersCareerIdRoute
   '/assessment': typeof AuthenticatedAssessmentIndexRoute
-  '/assistant': typeof AuthenticatedAssistantIndexRoute
+  '/careers': typeof AuthenticatedCareersIndexRoute
   '/dashboard': typeof AuthenticatedDashboardIndexRoute
   '/mentorship': typeof AuthenticatedMentorshipIndexRoute
   '/opportunities': typeof AuthenticatedOpportunitiesIndexRoute
@@ -213,8 +222,9 @@ export interface FileRoutesById {
   '/_public': typeof PublicRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRouteWithChildren
   '/_public/home': typeof PublicHomeRoute
+  '/_authenticated/careers/$careerId': typeof AuthenticatedCareersCareerIdRoute
   '/_authenticated/assessment/': typeof AuthenticatedAssessmentIndexRoute
-  '/_authenticated/assistant/': typeof AuthenticatedAssistantIndexRoute
+  '/_authenticated/careers/': typeof AuthenticatedCareersIndexRoute
   '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/_authenticated/mentorship/': typeof AuthenticatedMentorshipIndexRoute
   '/_authenticated/opportunities/': typeof AuthenticatedOpportunitiesIndexRoute
@@ -238,8 +248,9 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/home'
+    | '/careers/$careerId'
     | '/assessment/'
-    | '/assistant/'
+    | '/careers/'
     | '/dashboard/'
     | '/mentorship/'
     | '/opportunities/'
@@ -260,8 +271,9 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/home'
+    | '/careers/$careerId'
     | '/assessment'
-    | '/assistant'
+    | '/careers'
     | '/dashboard'
     | '/mentorship'
     | '/opportunities'
@@ -285,8 +297,9 @@ export interface FileRouteTypes {
     | '/_public'
     | '/_authenticated/dashboard'
     | '/_public/home'
+    | '/_authenticated/careers/$careerId'
     | '/_authenticated/assessment/'
-    | '/_authenticated/assistant/'
+    | '/_authenticated/careers/'
     | '/_authenticated/dashboard/'
     | '/_authenticated/mentorship/'
     | '/_authenticated/opportunities/'
@@ -464,11 +477,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardIndexRouteImport
       parentRoute: typeof AuthenticatedDashboardRoute
     }
-    '/_authenticated/assistant/': {
-      id: '/_authenticated/assistant/'
-      path: '/assistant'
-      fullPath: '/assistant/'
-      preLoaderRoute: typeof AuthenticatedAssistantIndexRouteImport
+    '/_authenticated/careers/': {
+      id: '/_authenticated/careers/'
+      path: '/careers'
+      fullPath: '/careers/'
+      preLoaderRoute: typeof AuthenticatedCareersIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/assessment/': {
@@ -476,6 +489,13 @@ declare module '@tanstack/react-router' {
       path: '/assessment'
       fullPath: '/assessment/'
       preLoaderRoute: typeof AuthenticatedAssessmentIndexRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/careers/$careerId': {
+      id: '/_authenticated/careers/$careerId'
+      path: '/careers/$careerId'
+      fullPath: '/careers/$careerId'
+      preLoaderRoute: typeof AuthenticatedCareersCareerIdRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
   }
@@ -497,8 +517,9 @@ const AuthenticatedDashboardRouteWithChildren =
 
 interface AuthenticatedRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRouteWithChildren
+  AuthenticatedCareersCareerIdRoute: typeof AuthenticatedCareersCareerIdRoute
   AuthenticatedAssessmentIndexRoute: typeof AuthenticatedAssessmentIndexRoute
-  AuthenticatedAssistantIndexRoute: typeof AuthenticatedAssistantIndexRoute
+  AuthenticatedCareersIndexRoute: typeof AuthenticatedCareersIndexRoute
   AuthenticatedMentorshipIndexRoute: typeof AuthenticatedMentorshipIndexRoute
   AuthenticatedOpportunitiesIndexRoute: typeof AuthenticatedOpportunitiesIndexRoute
   AuthenticatedPlacementIndexRoute: typeof AuthenticatedPlacementIndexRoute
@@ -514,8 +535,9 @@ interface AuthenticatedRouteChildren {
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRouteWithChildren,
+  AuthenticatedCareersCareerIdRoute: AuthenticatedCareersCareerIdRoute,
   AuthenticatedAssessmentIndexRoute: AuthenticatedAssessmentIndexRoute,
-  AuthenticatedAssistantIndexRoute: AuthenticatedAssistantIndexRoute,
+  AuthenticatedCareersIndexRoute: AuthenticatedCareersIndexRoute,
   AuthenticatedMentorshipIndexRoute: AuthenticatedMentorshipIndexRoute,
   AuthenticatedOpportunitiesIndexRoute: AuthenticatedOpportunitiesIndexRoute,
   AuthenticatedPlacementIndexRoute: AuthenticatedPlacementIndexRoute,

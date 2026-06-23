@@ -1,5 +1,6 @@
-import { createFileRoute, useRouteContext } from '@tanstack/react-router'
+import { createFileRoute, useRouteContext, useRouter } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { DashboardLayout } from '../../../components/layout/DashboardLayout'
 
 export const Route = createFileRoute('/_authenticated/settings/')({
@@ -36,6 +37,8 @@ function SettingsPage() {
   const [error, setError] = useState<string | null>(null)
   
   const context = useRouteContext({ strict: false }) as any;
+  const router = useRouter();
+  const queryClient = useQueryClient();
   const [profile, setProfile] = useState({
     name: context?.sessionUser?.name || MOCK_SETTINGS_DATA.profile.name,
     email: context?.sessionUser?.email || MOCK_SETTINGS_DATA.profile.email,
@@ -57,18 +60,51 @@ function SettingsPage() {
     return () => clearTimeout(timer)
   }, [])
 
-  // Future Integration Structure:
+  useEffect(() => {
+    if (context?.sessionUser || context?.profile) {
+      setProfile(prev => ({
+        ...prev,
+        name: context?.sessionUser?.name || prev.name,
+        email: context?.sessionUser?.email || prev.email,
+        phone: context?.profile?.phone || prev.phone
+      }))
+    }
+  }, [context?.sessionUser, context?.profile])
+
   // PUT /api/profile -> saves profile state
   // PUT /api/settings -> saves notifications, privacy, aiPrefs state
   const handleSave = async () => {
     setIsSaving(true)
     setSaveSuccess(false)
-    // Simulate API call
-    setTimeout(() => {
-      setIsSaving(false)
-      setSaveSuccess(true)
-      setTimeout(() => setSaveSuccess(false), 3000)
-    }, 1000)
+    setError(null)
+    try {
+      const response = await fetch("http://localhost:3000/api/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          userId: context?.sessionUser?.id,
+          name: profile.name,
+          phone: profile.phone,
+        })
+      });
+      const result = await response.json();
+      if (!result.success) throw new Error("Failed to update profile settings");
+      setSaveSuccess(true);
+      
+      // Invalidate relevant queries so the user sees fresh recommendations and skill gap analysis
+      await queryClient.invalidateQueries({ queryKey: ['recommendations'] });
+      await queryClient.invalidateQueries({ queryKey: ['recommendations-ai'] });
+      await queryClient.invalidateQueries({ queryKey: ['assessment-data'] });
+      await queryClient.invalidateQueries({ queryKey: ['assessment-ai'] });
+
+      setTimeout(() => setSaveSuccess(false), 3000);
+      router.invalidate();
+    } catch (err) {
+      setError("An error occurred while saving.");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   if (loading) {

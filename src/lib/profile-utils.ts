@@ -1,6 +1,8 @@
 export type ProfileData = {
+  name?: string;
   branch?: string;
   year?: string;
+  cgpa?: string | number;
   phone?: string;
   skills?: string[] | string;
   interests?: string[] | string;
@@ -14,29 +16,25 @@ export function calculateProfileCompletion(profile: ProfileData | null, sessionU
   if (!profile && !sessionUser) return 0;
   
   const fields = [
-    sessionUser?.name,
+    sessionUser?.name || profile?.name,
     sessionUser?.email,
     profile?.phone,
-    profile?.branch,
-    profile?.year,
-    profile?.careerGoal,
     profile?.bio,
+    profile?.careerGoal,
     profile?.linkedin,
-    profile?.github
+    profile?.github,
+    profile?.branch,
+    profile?.cgpa ? String(profile.cgpa) : undefined
   ];
   
-  let filledCount = fields.filter(f => f && typeof f === 'string' && f.trim() !== '').length;
+  let filledCount = fields.filter(f => f !== undefined && f !== null && String(f).trim() !== '').length;
   
   if (profile?.skills && (Array.isArray(profile.skills) ? profile.skills.length > 0 : (typeof profile.skills === 'string' && profile.skills.trim() !== ''))) {
     filledCount++;
   }
   
-  if (profile?.interests && (Array.isArray(profile.interests) ? profile.interests.length > 0 : (typeof profile.interests === 'string' && profile.interests.trim() !== ''))) {
-    filledCount++;
-  }
-  
-  // Total fields = 9 simple + 2 array = 11
-  return Math.round((filledCount / 11) * 100);
+  // Total fields = 9 simple + 1 array = 10
+  return Math.round((filledCount / 10) * 100);
 }
 
 export function hasMissingMandatoryFields(profile: ProfileData | null): boolean {

@@ -2,6 +2,7 @@ import { createFileRoute, useRouteContext, useRouter } from '@tanstack/react-rou
 import { authClient } from '../../../lib/auth-client'
 import { DashboardLayout } from '../../../components/layout/DashboardLayout'
 import { useState, useEffect } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { calculateProfileCompletion } from '../../../lib/profile-utils'
 
 
@@ -10,8 +11,10 @@ export const Route = createFileRoute('/_authenticated/profile/')({
 })
 
 type ProfileData = {
+  name?: string;
   branch: string;
   year: string;
+  cgpa?: string | number;
   phone: string;
   skills: string[] | string;
   interests: string[] | string;
@@ -22,12 +25,13 @@ type ProfileData = {
 }
 
 const defaultProfile: ProfileData = {
-  branch: '', year: '', phone: '', skills: [], interests: [], careerGoal: '', linkedin: '', github: '', bio: ''
+  name: '', branch: '', year: '', cgpa: '', phone: '', skills: [], interests: [], careerGoal: '', linkedin: '', github: '', bio: ''
 }
 
 function ProfilePage() {
   const context = useRouteContext({ strict: false }) as any;
   const router = useRouter()
+  const queryClient = useQueryClient();
   
   const { data: sessionData } = authClient.useSession()
   const userName = sessionData?.user?.name || context?.sessionUser?.name || 'Student'
@@ -85,12 +89,17 @@ function ProfilePage() {
     credentials: "include",
     body: JSON.stringify({
       userId: sessionData?.user?.id,
+      name: payload.name,
       branch: payload.branch,
-      year: Number(payload.year),
-      cgpa: 8.5,
+      year: payload.year ? Number(payload.year) : null,
+      cgpa: payload.cgpa ? Number(payload.cgpa) : null,
       skills: payload.skills,
       interests: payload.interests,
       careerGoal: payload.careerGoal,
+      phone: payload.phone,
+      bio: payload.bio,
+      github: payload.github,
+      linkedin: payload.linkedin,
     }),
   }
 );
@@ -110,6 +119,13 @@ setFormData({
   ...defaultProfile,
   ...result.data,
 });
+      
+      // Invalidate relevant queries so the user sees fresh recommendations and skill gap analysis
+      await queryClient.invalidateQueries({ queryKey: ['recommendations'] });
+      await queryClient.invalidateQueries({ queryKey: ['recommendations-ai'] });
+      await queryClient.invalidateQueries({ queryKey: ['assessment-data'] });
+      await queryClient.invalidateQueries({ queryKey: ['assessment-ai'] });
+
       setIsEditing(false)
       setSuccess('Profile updated successfully!')
       router.invalidate() // Triggers the _authenticated loader to refetch the profile
@@ -200,7 +216,11 @@ setFormData({
             </div>
             <div className="flex-1 space-y-4">
               <div className="flex items-center gap-3">
-                <h2 className="text-xl md:text-2xl font-bold truncate max-w-[200px]">{userName}</h2>
+                {isEditing ? (
+                  <input type="text" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="text-xl md:text-2xl font-bold border-b border-gray-300 focus:border-brand-green outline-none bg-transparent w-full" placeholder="Your Name" />
+                ) : (
+                  <h2 className="text-xl md:text-2xl font-bold truncate max-w-[200px]">{profile.name || userName}</h2>
+                )}
                 <span className="px-3 py-0.5 bg-green-100 text-green-600 rounded-full text-xs font-semibold shrink-0">Student</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-8 text-sm text-[#50606f]">
@@ -358,7 +378,7 @@ setFormData({
                 </div>
                 <div className="flex-1 space-y-3">
                   {isEditing ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
                         <label className="text-xs font-semibold text-gray-600 mb-1 block">Branch / Course <span className="text-red-500">*</span></label>
                         <input type="text" value={formData.branch || ''} onChange={e => setFormData({...formData, branch: e.target.value})} placeholder="e.g. Computer Science" className="w-full p-2.5 border border-gray-200 rounded-lg focus:border-brand-green outline-none text-sm" />
@@ -367,12 +387,19 @@ setFormData({
                         <label className="text-xs font-semibold text-gray-600 mb-1 block">Graduation Year <span className="text-red-500">*</span></label>
                         <input type="text" value={formData.year || ''} onChange={e => setFormData({...formData, year: e.target.value})} placeholder="e.g. 2026" className="w-full p-2.5 border border-gray-200 rounded-lg focus:border-brand-green outline-none text-sm" />
                       </div>
+                      <div>
+                        <label className="text-xs font-semibold text-gray-600 mb-1 block">CGPA</label>
+                        <input type="text" value={formData.cgpa || ''} onChange={e => setFormData({...formData, cgpa: e.target.value})} placeholder="e.g. 8.5" className="w-full p-2.5 border border-gray-200 rounded-lg focus:border-brand-green outline-none text-sm" />
+                      </div>
                     </div>
                   ) : (
                     <>
                       <h4 className="text-base font-bold text-gray-800">{profile.branch || <span className="text-gray-400 italic">Branch not provided</span>}</h4>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="px-2.5 py-1 bg-green-50 text-brand-green rounded-md text-xs font-bold border border-green-100">Class of {profile.year || 'Unknown'}</span>
+                        {profile.cgpa && (
+                          <span className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-md text-xs font-bold border border-blue-100">CGPA: {profile.cgpa}</span>
+                        )}
                       </div>
                     </>
                   )}

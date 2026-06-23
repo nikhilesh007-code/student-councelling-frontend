@@ -1,5 +1,6 @@
 import { Link, useNavigate, useRouteContext } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
+import { ChatWidget } from '../chat/ChatWidget'
 
 const navItems = [
   { icon: 'dashboard', label: 'Dashboard', to: '/dashboard' },
@@ -11,7 +12,6 @@ const navItems = [
   { icon: 'work', label: 'Opportunities', to: '/opportunities' },
   { icon: 'description', label: 'Resume Analysis', to: '/resume' },
   { icon: 'groups', label: 'Mentorship', to: '/mentorship' },
-  { icon: 'psychology', label: 'AI Chat Assistant', to: '/assistant' },
   { icon: 'school', label: 'Placement Preparation', to: '/placement' },
   { icon: 'trending_up', label: 'Progress Tracking', to: '/progress' },
   { icon: 'calendar_today', label: 'Study Planner', to: '/planner' },
@@ -161,6 +161,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
+      <ChatWidget />
     </div>
   )
 }

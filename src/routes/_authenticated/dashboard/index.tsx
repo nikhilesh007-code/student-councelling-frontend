@@ -182,25 +182,42 @@ function Dashboard() {
           </div>
         </div>
 
-        <div className="col-span-4 p-8 rounded-2xl shadow-[0px_4px_20px_rgba(0,0,0,0.04)] flex flex-col items-center justify-center text-center border border-[#00a878]/10"
-          style={{ backgroundColor: '#f0fff9' }}>
-          <div className="relative mb-6">
-            <div className="absolute -top-4 -right-4 bg-white p-2 rounded-xl shadow-md">
-              <span className="material-symbols-outlined text-[#00a878]">more_horiz</span>
+        <div className="col-span-4 p-6 rounded-2xl shadow-[0px_4px_20px_rgba(0,0,0,0.04)] bg-white border border-[#00a878]/10 flex flex-col">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-lg font-semibold">Learning Resources</h3>
+            <a className="text-[#006c4c] font-bold text-[12px] hover:underline" href="/resources">View All</a>
+          </div>
+          <div className="space-y-4 flex-1">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-500 shrink-0">
+                <span className="material-symbols-outlined">menu_book</span>
+              </div>
+              <div className="min-w-0">
+                <h4 className="text-sm font-bold truncate">Advanced React Patterns</h4>
+                <p className="text-[11px] text-[#50606f] truncate">Frontend Development</p>
+              </div>
             </div>
-            <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center shadow-inner">
-              <img
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuD_PLTwL_08nuCbEyXrppfmYXHncSTjIqzUPwwE7it_zDd2O2eKmYetFB4mMaR2BPco5mzF4ZDlmDyijlxA_AjO_HPQGlfSnP_DgeexrT3N6ue6DDVxSqHt9vrfYaRnq-ABejS_aHoOqGcmJ1TRZUqUvyMpYqEr4BZiS4T-sNS_FRbzIR8cSQisq9UnBkHULAPNAkQCH1waFL1zYL2_advWcRCD5A58pmiUWFA8Pu2iOaK1auORrscSMO1eheOSf3NI9Z3Bggd-5oht"
-                alt="AI Assistant"
-                className="w-20 h-20 object-contain rounded-full"
-              />
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-rose-50 rounded-xl flex items-center justify-center text-rose-500 shrink-0">
+                <span className="material-symbols-outlined">data_object</span>
+              </div>
+              <div className="min-w-0">
+                <h4 className="text-sm font-bold truncate">System Design Interview</h4>
+                <p className="text-[11px] text-[#50606f] truncate">Backend Architecture</p>
+              </div>
+            </div>
+             <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-500 shrink-0">
+                <span className="material-symbols-outlined">terminal</span>
+              </div>
+              <div className="min-w-0">
+                <h4 className="text-sm font-bold truncate">DSA Problem Solving</h4>
+                <p className="text-[11px] text-[#50606f] truncate">Algorithms</p>
+              </div>
             </div>
           </div>
-          <h3 className="text-lg font-semibold mb-2">Ask CareerAI</h3>
-          <p className="text-sm text-[#3d4a42] mb-6 px-4">Your AI Career Assistant. Ask anything about careers, skills, jobs and more...</p>
-          <button className="text-white font-bold py-3 px-10 rounded-xl flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg"
-            style={{ backgroundColor: '#00a878', boxShadow: '0 10px 15px -3px rgba(0,168,120,0.2)' }}>
-            Start Chat <span className="material-symbols-outlined">trending_flat</span>
+          <button className="w-full mt-4 py-2.5 text-[#006c4c] font-bold text-sm bg-emerald-50 rounded-xl hover:bg-emerald-100 transition-colors">
+            Start Learning
           </button>
         </div>
       </div>

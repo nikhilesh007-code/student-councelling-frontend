@@ -1,6 +1,9 @@
 import { createRootRoute, Outlet } from '@tanstack/react-router'
 import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import React from 'react'
+import { QueryClient } from '@tanstack/react-query'
+import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
+import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister'
 
 class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: any}> {
   constructor(props: any) { super(props); this.state = { hasError: false, error: null }; }
@@ -18,11 +21,30 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
   }
 }
 
+// Setup QueryClient
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 60 * 24, // 24 hours (data rarely changes unless profile updates)
+      gcTime: 1000 * 60 * 60 * 24, // 24 hours
+      refetchOnWindowFocus: false,
+    },
+  },
+})
+
+// Setup Persister
+const persister = createSyncStoragePersister({
+  storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+  key: 'STUDENT_COUNSELLING_QUERY_CACHE',
+})
+
 export const Route = createRootRoute({
   component: () => (
     <ErrorBoundary>
-      <Outlet />
-      {import.meta.env.DEV && <TanStackRouterDevtools />}
+      <PersistQueryClientProvider client={queryClient} persistOptions={{ persister }}>
+        <Outlet />
+        {import.meta.env.DEV && <TanStackRouterDevtools />}
+      </PersistQueryClientProvider>
     </ErrorBoundary>
   ),
 })

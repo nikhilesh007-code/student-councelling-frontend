@@ -23,12 +23,29 @@ const sessionData = await sessionResponse.json();
 
 const sessionUser = sessionData?.user ?? null;
 
-    // 2. Fetch mock profile instead of API endpoint
     let profileData: ProfileData | null = null;
-    try {
-      profileData = await getMockProfile();
-    } catch (err) {
-      console.error("Failed to fetch mock profile", err)
+    
+    if (sessionUser?.id) {
+        try {
+            const profileResponse = await fetch(`http://localhost:3000/api/profile/${sessionUser.id}`, {
+                credentials: "include",
+            });
+            const result = await profileResponse.json();
+            if (result.success && result.data) {
+                profileData = result.data;
+            }
+        } catch (err) {
+            console.error("Failed to fetch real profile", err);
+        }
+    }
+
+    // Fallback to mock profile if still null (useful if backend not available)
+    if (!profileData) {
+        try {
+          profileData = await getMockProfile();
+        } catch (err) {
+          console.error("Failed to fetch mock profile", err)
+        }
     }
 
     // 3. Keep completion for informational banner, but DO NOT block routes or redirect

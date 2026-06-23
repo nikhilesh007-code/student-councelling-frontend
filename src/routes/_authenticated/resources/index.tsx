@@ -393,20 +393,17 @@ function ResourcesPage() {
 
             </div>
 
-            {/* AI Assistant Promo */}
+            {/* Skill-gap Information */}
             <div className="bg-gradient-to-r from-emerald-50 to-white rounded-2xl p-6 border border-emerald-100 flex flex-col sm:flex-row items-center justify-between mt-4 shadow-sm gap-4">
               <div className="flex items-center gap-4 text-center sm:text-left">
                 <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm text-[#00a878] border border-emerald-50 shrink-0">
-                  <span className="material-symbols-outlined">smart_toy</span>
+                  <span className="material-symbols-outlined">track_changes</span>
                 </div>
                 <div>
-                  <h4 className="text-[15px] font-extrabold text-slate-900 mb-1">Need help finding the right resources?</h4>
-                  <p className="text-[12px] font-medium text-slate-500">Ask CareerAI Assistant to get personalized recommendations.</p>
+                  <h4 className="text-[15px] font-extrabold text-slate-900 mb-1">Focus on Skill Gaps</h4>
+                  <p className="text-[12px] font-medium text-slate-500">Prioritize learning the missing skills identified in your assessment to accelerate your career growth.</p>
                 </div>
               </div>
-              <button className="px-6 py-2.5 bg-white border border-emerald-200 rounded-xl text-[13px] font-extrabold text-slate-800 hover:bg-emerald-50 hover:text-[#00a878] flex items-center gap-2 transition-colors shadow-sm shrink-0 w-full sm:w-auto justify-center">
-                <span className="material-symbols-outlined text-[18px]">chat</span> Ask CareerAI
-              </button>
             </div>
 
           </div>

@@ -24,18 +24,23 @@ function CareerAIRegister() {
     setError('')
     setIsLoading(true)
     
-    const { data, error: signUpError } = await authClient.signUp.email({ 
-      email, 
-      password, 
-      name 
-    })
-    
-    setIsLoading(false)
-    
-    if (signUpError) {
-      setError(signUpError.message || 'Registration failed')
-    } else {
-      navigate({ to: '/dashboard' })
+    try {
+      const { data, error: signUpError } = await authClient.signUp.email({ 
+        email, 
+        password, 
+        name 
+      })
+      
+      if (signUpError) {
+        setError(signUpError.message || 'Registration failed')
+      } else {
+        navigate({ to: '/dashboard' })
+      }
+    } catch (err: any) {
+      console.error("Signup error:", err)
+      setError(err.message || 'Network error. Is the backend running?')
+    } finally {
+      setIsLoading(false)
     }
   }
 
