@@ -180,7 +180,7 @@ function generateResult(scoredCareers: RecommendedCareer[], profile: UserProfile
   
   const primaryCareer = topMatches[0];
   
-  let reasons = [
+  const reasons = [
     `Strong alignment with your required core skills like ${primaryCareer.requiredSkills[0]}`,
     `High demand in the current job market`,
     `Fits your academic background`

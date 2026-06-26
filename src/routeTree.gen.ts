@@ -30,9 +30,9 @@ import { Route as AuthenticatedPlacementIndexRouteImport } from './routes/_authe
 import { Route as AuthenticatedOpportunitiesIndexRouteImport } from './routes/_authenticated/opportunities/index'
 import { Route as AuthenticatedMentorshipIndexRouteImport } from './routes/_authenticated/mentorship/index'
 import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard/index'
-import { Route as AuthenticatedCareersIndexRouteImport } from './routes/_authenticated/careers/index'
 import { Route as AuthenticatedAssessmentIndexRouteImport } from './routes/_authenticated/assessment/index'
-import { Route as AuthenticatedCareersCareerIdRouteImport } from './routes/_authenticated/careers/$careerId'
+import { Route as AuthenticatedProfileIndexWorkingRouteImport } from './routes/_authenticated/profile/index.working'
+import { Route as AuthenticatedProfileIndexBackupRouteImport } from './routes/_authenticated/profile/index.backup'
 
 const PublicRoute = PublicRouteImport.update({
   id: '/_public',
@@ -149,22 +149,22 @@ const AuthenticatedDashboardIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedDashboardRoute,
   } as any)
-const AuthenticatedCareersIndexRoute =
-  AuthenticatedCareersIndexRouteImport.update({
-    id: '/careers/',
-    path: '/careers/',
-    getParentRoute: () => AuthenticatedRoute,
-  } as any)
 const AuthenticatedAssessmentIndexRoute =
   AuthenticatedAssessmentIndexRouteImport.update({
     id: '/assessment/',
     path: '/assessment/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedCareersCareerIdRoute =
-  AuthenticatedCareersCareerIdRouteImport.update({
-    id: '/careers/$careerId',
-    path: '/careers/$careerId',
+const AuthenticatedProfileIndexWorkingRoute =
+  AuthenticatedProfileIndexWorkingRouteImport.update({
+    id: '/profile/index/working',
+    path: '/profile/index/working',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
+const AuthenticatedProfileIndexBackupRoute =
+  AuthenticatedProfileIndexBackupRouteImport.update({
+    id: '/profile/index/backup',
+    path: '/profile/index/backup',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 
@@ -172,9 +172,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof AuthenticatedDashboardRouteWithChildren
   '/home': typeof PublicHomeRoute
-  '/careers/$careerId': typeof AuthenticatedCareersCareerIdRoute
   '/assessment/': typeof AuthenticatedAssessmentIndexRoute
-  '/careers/': typeof AuthenticatedCareersIndexRoute
   '/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/mentorship/': typeof AuthenticatedMentorshipIndexRoute
   '/opportunities/': typeof AuthenticatedOpportunitiesIndexRoute
@@ -191,13 +189,13 @@ export interface FileRoutesByFullPath {
   '/auth/login/': typeof AuthLoginIndexRoute
   '/auth/register/': typeof AuthRegisterIndexRoute
   '/auth/reset-password/': typeof AuthResetPasswordIndexRoute
+  '/profile/index/backup': typeof AuthenticatedProfileIndexBackupRoute
+  '/profile/index/working': typeof AuthenticatedProfileIndexWorkingRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/home': typeof PublicHomeRoute
-  '/careers/$careerId': typeof AuthenticatedCareersCareerIdRoute
   '/assessment': typeof AuthenticatedAssessmentIndexRoute
-  '/careers': typeof AuthenticatedCareersIndexRoute
   '/dashboard': typeof AuthenticatedDashboardIndexRoute
   '/mentorship': typeof AuthenticatedMentorshipIndexRoute
   '/opportunities': typeof AuthenticatedOpportunitiesIndexRoute
@@ -214,6 +212,8 @@ export interface FileRoutesByTo {
   '/auth/login': typeof AuthLoginIndexRoute
   '/auth/register': typeof AuthRegisterIndexRoute
   '/auth/reset-password': typeof AuthResetPasswordIndexRoute
+  '/profile/index/backup': typeof AuthenticatedProfileIndexBackupRoute
+  '/profile/index/working': typeof AuthenticatedProfileIndexWorkingRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -222,9 +222,7 @@ export interface FileRoutesById {
   '/_public': typeof PublicRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRouteWithChildren
   '/_public/home': typeof PublicHomeRoute
-  '/_authenticated/careers/$careerId': typeof AuthenticatedCareersCareerIdRoute
   '/_authenticated/assessment/': typeof AuthenticatedAssessmentIndexRoute
-  '/_authenticated/careers/': typeof AuthenticatedCareersIndexRoute
   '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/_authenticated/mentorship/': typeof AuthenticatedMentorshipIndexRoute
   '/_authenticated/opportunities/': typeof AuthenticatedOpportunitiesIndexRoute
@@ -241,6 +239,8 @@ export interface FileRoutesById {
   '/auth/login/': typeof AuthLoginIndexRoute
   '/auth/register/': typeof AuthRegisterIndexRoute
   '/auth/reset-password/': typeof AuthResetPasswordIndexRoute
+  '/_authenticated/profile/index/backup': typeof AuthenticatedProfileIndexBackupRoute
+  '/_authenticated/profile/index/working': typeof AuthenticatedProfileIndexWorkingRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -248,9 +248,7 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/home'
-    | '/careers/$careerId'
     | '/assessment/'
-    | '/careers/'
     | '/dashboard/'
     | '/mentorship/'
     | '/opportunities/'
@@ -267,13 +265,13 @@ export interface FileRouteTypes {
     | '/auth/login/'
     | '/auth/register/'
     | '/auth/reset-password/'
+    | '/profile/index/backup'
+    | '/profile/index/working'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/home'
-    | '/careers/$careerId'
     | '/assessment'
-    | '/careers'
     | '/dashboard'
     | '/mentorship'
     | '/opportunities'
@@ -290,6 +288,8 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/register'
     | '/auth/reset-password'
+    | '/profile/index/backup'
+    | '/profile/index/working'
   id:
     | '__root__'
     | '/'
@@ -297,9 +297,7 @@ export interface FileRouteTypes {
     | '/_public'
     | '/_authenticated/dashboard'
     | '/_public/home'
-    | '/_authenticated/careers/$careerId'
     | '/_authenticated/assessment/'
-    | '/_authenticated/careers/'
     | '/_authenticated/dashboard/'
     | '/_authenticated/mentorship/'
     | '/_authenticated/opportunities/'
@@ -316,6 +314,8 @@ export interface FileRouteTypes {
     | '/auth/login/'
     | '/auth/register/'
     | '/auth/reset-password/'
+    | '/_authenticated/profile/index/backup'
+    | '/_authenticated/profile/index/working'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -477,13 +477,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardIndexRouteImport
       parentRoute: typeof AuthenticatedDashboardRoute
     }
-    '/_authenticated/careers/': {
-      id: '/_authenticated/careers/'
-      path: '/careers'
-      fullPath: '/careers/'
-      preLoaderRoute: typeof AuthenticatedCareersIndexRouteImport
-      parentRoute: typeof AuthenticatedRoute
-    }
     '/_authenticated/assessment/': {
       id: '/_authenticated/assessment/'
       path: '/assessment'
@@ -491,11 +484,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAssessmentIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/careers/$careerId': {
-      id: '/_authenticated/careers/$careerId'
-      path: '/careers/$careerId'
-      fullPath: '/careers/$careerId'
-      preLoaderRoute: typeof AuthenticatedCareersCareerIdRouteImport
+    '/_authenticated/profile/index/working': {
+      id: '/_authenticated/profile/index/working'
+      path: '/profile/index/working'
+      fullPath: '/profile/index/working'
+      preLoaderRoute: typeof AuthenticatedProfileIndexWorkingRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
+    '/_authenticated/profile/index/backup': {
+      id: '/_authenticated/profile/index/backup'
+      path: '/profile/index/backup'
+      fullPath: '/profile/index/backup'
+      preLoaderRoute: typeof AuthenticatedProfileIndexBackupRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
   }
@@ -517,9 +517,7 @@ const AuthenticatedDashboardRouteWithChildren =
 
 interface AuthenticatedRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRouteWithChildren
-  AuthenticatedCareersCareerIdRoute: typeof AuthenticatedCareersCareerIdRoute
   AuthenticatedAssessmentIndexRoute: typeof AuthenticatedAssessmentIndexRoute
-  AuthenticatedCareersIndexRoute: typeof AuthenticatedCareersIndexRoute
   AuthenticatedMentorshipIndexRoute: typeof AuthenticatedMentorshipIndexRoute
   AuthenticatedOpportunitiesIndexRoute: typeof AuthenticatedOpportunitiesIndexRoute
   AuthenticatedPlacementIndexRoute: typeof AuthenticatedPlacementIndexRoute
@@ -531,13 +529,13 @@ interface AuthenticatedRouteChildren {
   AuthenticatedResumeIndexRoute: typeof AuthenticatedResumeIndexRoute
   AuthenticatedRoadmapIndexRoute: typeof AuthenticatedRoadmapIndexRoute
   AuthenticatedSettingsIndexRoute: typeof AuthenticatedSettingsIndexRoute
+  AuthenticatedProfileIndexBackupRoute: typeof AuthenticatedProfileIndexBackupRoute
+  AuthenticatedProfileIndexWorkingRoute: typeof AuthenticatedProfileIndexWorkingRoute
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRouteWithChildren,
-  AuthenticatedCareersCareerIdRoute: AuthenticatedCareersCareerIdRoute,
   AuthenticatedAssessmentIndexRoute: AuthenticatedAssessmentIndexRoute,
-  AuthenticatedCareersIndexRoute: AuthenticatedCareersIndexRoute,
   AuthenticatedMentorshipIndexRoute: AuthenticatedMentorshipIndexRoute,
   AuthenticatedOpportunitiesIndexRoute: AuthenticatedOpportunitiesIndexRoute,
   AuthenticatedPlacementIndexRoute: AuthenticatedPlacementIndexRoute,
@@ -549,6 +547,8 @@ const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedResumeIndexRoute: AuthenticatedResumeIndexRoute,
   AuthenticatedRoadmapIndexRoute: AuthenticatedRoadmapIndexRoute,
   AuthenticatedSettingsIndexRoute: AuthenticatedSettingsIndexRoute,
+  AuthenticatedProfileIndexBackupRoute: AuthenticatedProfileIndexBackupRoute,
+  AuthenticatedProfileIndexWorkingRoute: AuthenticatedProfileIndexWorkingRoute,
 }
 
 const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(

@@ -3,8 +3,6 @@ import { useState, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { DashboardLayout } from '../../../components/layout/DashboardLayout'
 
-import type { RecommendationResult, RecommendedCareer } from '../../../services/recommendation-service'
-
 export const Route = createFileRoute('/_authenticated/recommendation/')({
   component: CareerGuidancePage,
 })
@@ -15,9 +13,10 @@ function CareerGuidancePage() {
   const userId = sessionUser?.id;
   const profileData = context?.profile;
 
-  const [activeCareerId, setActiveCareerId] = useState<string | number | null>(null);
+  const [activeCareerTitle, setActiveCareerTitle] = useState<string | null>(profileData?.selectedCareer || null);
   const queryClient = useQueryClient();
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [isSettingTarget, setIsSettingTarget] = useState(false);
 
   // Main Query for Recommendations Data
   const { data, isLoading, error, refetch } = useQuery({
@@ -25,157 +24,69 @@ function CareerGuidancePage() {
     queryFn: async ({ signal }) => {
       if (!userId) throw new Error("No user ID found");
 
-      // Fetch Skill Gap and Careers concurrently
-      const [skillGapRes, careersRes, guidanceRes] = await Promise.all([
-        fetch("http://localhost:3000/api/skill-gap/analyze", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ userId }),
-          signal,
-        }),
-        fetch(`http://localhost:3000/api/careers?userId=${userId}`, {
-          credentials: "include",
-          signal,
-        }),
-        fetch("http://localhost:3000/api/career-guidance", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ userId }),
-          signal,
-        })
-      ]);
+      const guidanceRes = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000/api"}/career-guidance`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ userId }),
+        signal,
+      });
 
-      if (!skillGapRes.ok || !guidanceRes.ok) {
-        throw new Error("Failed to fetch recommendation data");
+      if (!guidanceRes.ok) {
+        throw new Error("Failed to fetch AI recommendation data");
       }
 
-      const [skillGap, careersDataRes, guidance] = await Promise.all([
-        skillGapRes.json(),
-        careersRes.ok ? careersRes.json() : { data: [] },
-        guidanceRes.json()
-      ]);
+      const guidance = await guidanceRes.json();
+      if (!guidance.success) {
+          throw new Error(guidance.message || "Failed AI analysis");
+      }
 
-      const careersData = careersDataRes.success ? careersDataRes.data : [];
-
-      // Map careers to Top Matches
-      const mappedCareers = careersData.map((c: any, index: number) => ({
-        id: c.id,
-        title: c.name,
-        matchScore: c.matchScore || c.readinessScore || 80,
-        averageSalary: c.salaryRange || "₹8 - 15 LPA",
-        demandLevel: "High",
-        jobGrowth: "Excellent",
-        requiredSkills: c.matchedSkills?.length ? c.matchedSkills : c.requiredSkills?.slice(0, 3) || [],
-        recommendedSkills: c.missingSkills || [],
-        recommendedCertifications: [],
-        topIndustries: ["IT", "Software", "Tech"],
-        tags: index === 0 ? ["AI Recommended"] : ["Good Match"],
-        icon: "work",
-        colorClass: index === 0 ? "text-emerald-500 bg-emerald-50" : "text-blue-500 bg-blue-50",
+      const topCareers = (guidance.topCareers || []).map((c: any, index: number) => ({
+        ...c,
+        id: c.title,
+        colorClass: index === 0 ? "text-emerald-500 bg-emerald-50" : (index === 1 ? "text-blue-500 bg-blue-50" : "text-purple-500 bg-purple-50"),
+        icon: index === 0 ? "work" : (index === 1 ? "rocket_launch" : "psychiatry"),
+        tags: index === 0 ? ["Top Match", "AI Recommended"] : ["Great Option"]
       }));
 
-      const topMatches = mappedCareers.slice(0, 3);
-      const otherOptions = mappedCareers.slice(3, 9);
-
-      if (topMatches.length === 0) {
-        topMatches.push({
-          id: 1,
-          title: skillGap.career,
-          matchScore: skillGap.readinessScore,
-          averageSalary: "₹8 - 15 LPA",
-          demandLevel: "High",
-          jobGrowth: "Excellent",
-          requiredSkills: skillGap.matchedSkills || [],
-          recommendedSkills: skillGap.missingSkills || [],
-          recommendedCertifications: [],
-          topIndustries: ["IT", "Software"],
-          tags: ["AI Recommended"],
-          icon: "code",
-          colorClass: "text-emerald-500 bg-emerald-50",
-        });
-      }
-
-      const primaryMatch = topMatches[0];
-
       return {
-        topMatches,
-        otherOptions,
-        guidanceData: guidance.success ? guidance : null,
-        primaryMatch,
-        roadmap: [
-          {
-            step: 1,
-            title: "Learn Missing Skills",
-            desc: primaryMatch.recommendedSkills.slice(0, 3).join(", ") || "Focus on building advanced projects.",
-            color: "bg-emerald-500",
-          },
-        ]
+        topCareers,
+        roadmap: guidance.roadmap || [],
+        guidanceMeta: guidance._meta
       };
     },
     enabled: !!userId,
     staleTime: 1000 * 60 * 5, // 5 minutes
-  });
-
-  // Query for AI Insights (runs only if guidanceData exists)
-  const guidanceData = data?.guidanceData;
-  const { data: aiInsights, isLoading: aiInsightsLoading } = useQuery({
-    queryKey: ['recommendations-ai', userId, guidanceData?.career],
-    queryFn: async ({ signal }) => {
-      const aiRes = await fetch("http://localhost:3000/api/career-guidance/ai", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          userId,
-          studentSkills: guidanceData.studentSkills,
-          interests: guidanceData.interests,
-          careerGoal: guidanceData.careerGoal,
-          careerName: guidanceData.career,
-          matchScore: guidanceData.matchScore,
-          missingSkills: guidanceData.missingSkills
-        }),
-        signal
-      }).then(r => r.json());
-
-      if (aiRes.success) {
-        return {
-          explanation: aiRes.aiExplanation,
-          reasons: aiRes.nextSteps
-        };
-      }
-      throw new Error("Failed AI guidance");
-    },
-    enabled: !!guidanceData,
-    staleTime: Infinity, // Never re-fetch AI insights if cached
+    retry: false,
+    refetchInterval: (query: any) => {
+        const data = query.state?.data as any;
+        return data?.guidanceMeta?.isRefreshing ? 3000 : false;
+    }
   });
 
   const handleRegenerate = async () => {
-    if (!guidanceData) return;
     setIsRegenerating(true);
     try {
-      const aiRes = await fetch("http://localhost:3000/api/career-guidance/ai", {
+      const guidanceRes = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000/api"}/career-guidance`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({
-          userId,
-          studentSkills: guidanceData.studentSkills,
-          interests: guidanceData.interests,
-          careerGoal: guidanceData.careerGoal,
-          careerName: guidanceData.career,
-          matchScore: guidanceData.matchScore,
-          missingSkills: guidanceData.missingSkills,
-          regenerate: true
-        })
-      }).then(r => r.json());
-
-      if (aiRes.success) {
-        queryClient.setQueryData(['recommendations-ai', userId, guidanceData?.career], {
-          explanation: aiRes.aiExplanation,
-          reasons: aiRes.nextSteps
+        body: JSON.stringify({ userId, regenerate: true }),
+      });
+      const guidance = await guidanceRes.json();
+      if (guidance.success) {
+        queryClient.setQueryData(['recommendations', userId, profileData?.updatedAt], {
+            topCareers: (guidance.topCareers || []).map((c: any, index: number) => ({
+                ...c,
+                id: c.title,
+                colorClass: index === 0 ? "text-emerald-500 bg-emerald-50" : (index === 1 ? "text-blue-500 bg-blue-50" : "text-purple-500 bg-purple-50"),
+                icon: index === 0 ? "work" : (index === 1 ? "rocket_launch" : "psychiatry"),
+                tags: index === 0 ? ["Top Match", "AI Recommended"] : ["Great Option"]
+              })),
+            roadmap: guidance.roadmap || [],
+            guidanceMeta: guidance._meta
         });
+        setActiveCareerTitle(guidance.topCareers[0]?.title);
       }
     } catch (e) {
       console.error(e);
@@ -184,12 +95,34 @@ function CareerGuidancePage() {
     }
   };
 
+  const handleSetTargetCareer = async (careerTitle: string) => {
+    setIsSettingTarget(true);
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000/api"}/profile/target-career`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ userId, selectedCareer: careerTitle }),
+      });
+      const json = await res.json();
+      if (json.success) {
+         // Reload profile context so it knows the new selected career globally
+         window.location.reload(); 
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSettingTarget(false);
+    }
+  };
+
   const activeCareer = useMemo(() => {
-    if (!data) return null;
-    return data.topMatches.find((c: any) => c.id === activeCareerId) 
-        || data.otherOptions.find((c: any) => c.id === activeCareerId) 
-        || data.primaryMatch;
-  }, [data, activeCareerId]);
+    const careers = data?.topCareers ?? [];
+    if (!careers || careers.length === 0) return null;
+    return careers.find((c: any) => c.title === activeCareerTitle) 
+        || careers.find((c: any) => c.title === profileData?.selectedCareer)
+        || careers[0];
+  }, [data, activeCareerTitle, profileData]);
 
   if (error) {
     return (
@@ -204,7 +137,9 @@ function CareerGuidancePage() {
     )
   }
 
-  if (isLoading || !data || !activeCareer) {
+  const careers = data?.topCareers ?? [];
+
+  if (isLoading || careers.length === 0) {
     return (
       <DashboardLayout>
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6">
@@ -227,15 +162,11 @@ function CareerGuidancePage() {
               <div className="h-96 bg-slate-100 rounded-3xl animate-pulse"></div>
             </div>
           </div>
-          <p className="text-slate-500 font-medium animate-pulse mt-4">Analyzing your profile to generate recommendations...</p>
+          <p className="text-slate-500 font-medium animate-pulse mt-4">Generating your AI recommendations...</p>
         </div>
       </DashboardLayout>
     )
   }
-
-  console.log('[CAREER PAGE DATA]', data);
-  console.log('[TOP MATCHES]', data?.topMatches);
-  console.log('[PRIMARY MATCH]', data?.primaryMatch);
 
   return (
     <DashboardLayout>
@@ -244,19 +175,35 @@ function CareerGuidancePage() {
         <section className="flex flex-col md:flex-row justify-between items-start mb-8 gap-6">
           <div>
             <h2 className="text-3xl font-extrabold text-slate-900 flex items-center gap-3 mb-2">
-              Career Guidance <span className="material-symbols-outlined text-amber-500" style={{ fontVariationSettings: "'FILL' 1" }}>track_changes</span>
+              AI Career Guidance <span className="material-symbols-outlined text-amber-500" style={{ fontVariationSettings: "'FILL' 1" }}>psychiatry</span>
             </h2>
             <p className="text-slate-500 text-sm">Discover the best career paths that match your skills, interests and goals.</p>
           </div>
-          <div className="bg-white p-4 rounded-2xl flex flex-col sm:flex-row items-center gap-6 border border-slate-100 shadow-sm w-full md:w-auto">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center shrink-0">
-                <span className="text-xl">💡</span>
+          <div className="flex items-center gap-4 w-full md:w-auto">
+              {data?.guidanceMeta?.isRefreshing && (
+                  <div className="bg-amber-50 text-amber-600 px-4 py-2 rounded-lg font-bold text-sm border border-amber-100 flex items-center gap-2 shadow-sm animate-pulse">
+                      <span className="material-symbols-outlined text-[18px] animate-spin">refresh</span>
+                      Refreshing recommendations...
+                  </div>
+              )}
+              <div className="bg-[#e6f6f2] p-4 rounded-2xl flex flex-col sm:flex-row items-center gap-6 border border-[#00a878]/20 shadow-sm w-full md:w-auto">
+             <div className="flex items-center gap-4">
+              <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center shrink-0">
+                <span className="text-xl">✨</span>
               </div>
               <div>
-                <h5 className="text-sm font-bold text-slate-900">Career Insights</h5>
-                <p className="text-xs text-slate-500">Your profile aligns well with software development roles.</p>
+                <h5 className="text-sm font-bold text-slate-900">AI Powered</h5>
+                <p className="text-xs text-slate-500">Generated specifically for you</p>
               </div>
+            </div>
+            <button 
+                onClick={handleRegenerate} 
+                disabled={isRegenerating || data?.guidanceMeta?.isRefreshing}
+                className="text-xs bg-[#00a878] text-white font-bold px-4 py-2 rounded-lg shadow-sm hover:bg-emerald-600 transition-colors disabled:opacity-50 flex items-center gap-2 shrink-0"
+            >
+                <span className={`material-symbols-outlined text-[16px] ${(isRegenerating || data?.guidanceMeta?.isRefreshing) ? 'animate-spin' : ''}`}>refresh</span>
+                {isRegenerating ? "Regenerating..." : "Regenerate Recommendations"}
+            </button>
             </div>
           </div>
         </section>
@@ -269,46 +216,39 @@ function CareerGuidancePage() {
             {/* Top Career Matches */}
             <section>
               <div className="flex items-center justify-between mb-5">
-                <h3 className="text-lg font-extrabold text-slate-900">Top Career Matches for You</h3>
-                <Link to="/careers" className="text-[#00a878] text-sm font-bold flex items-center gap-1 hover:underline shrink-0">
-                  View All
-                  <span className="material-symbols-outlined text-[16px] hidden sm:block">arrow_forward</span>
-                </Link>
+                <h3 className="text-lg font-extrabold text-slate-900">Top 3 Career Matches for You</h3>
               </div>
 
               {/* Cards Grid Container */}
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {data.topMatches.map((match: any, idx: number) => {
+                {careers.map((match: any, idx: number) => {
+                  const isActive = activeCareer && match.title === activeCareer.title;
                   const isTop = idx === 0;
                   return (
                     <div
-                      key={match.id}
-                      onClick={() => setActiveCareerId(match.id)}
-                      className={`p-5 bg-white rounded-2xl cursor-pointer min-w-0 transition-all ${isTop && match.id === activeCareer.id ? 'border-2 border-[#00a878] shadow-sm' : 'border border-slate-200 opacity-80 hover:opacity-100 hover:shadow-md'}`}
+                      key={match.title}
+                      onClick={() => setActiveCareerTitle(match.title)}
+                      className={`p-5 bg-white rounded-2xl cursor-pointer min-w-0 transition-all ${isActive ? 'border-2 border-[#00a878] shadow-md' : 'border border-slate-200 opacity-80 hover:opacity-100 hover:shadow-md'}`}
                     >
                       <div className="flex justify-between items-start mb-4 h-6">
-                        {isTop && <span className="bg-yellow-400 text-[9px] font-bold px-2 py-0.5 rounded text-white uppercase tracking-wider">Recommended</span>}
+                        {isTop && <span className="bg-yellow-400 text-[9px] font-bold px-2 py-0.5 rounded text-white uppercase tracking-wider">Top Match</span>}
                         {isTop && <span className="text-yellow-400 text-lg leading-none">★</span>}
                       </div>
                       <div className="flex flex-col items-center mb-6 pt-2">
                         <div className={`w-[60px] h-[60px] rounded-xl flex items-center justify-center mb-3 ${match.colorClass}`}>
-                          {match.icon.length > 2 ? (
                             <span className="material-symbols-outlined text-[32px]">{match.icon}</span>
-                          ) : (
-                            <span className="text-2xl">{match.icon}</span>
-                          )}
                         </div>
                         <h4 className="text-[15px] font-extrabold mb-1 text-slate-900 text-center">{match.title}</h4>
-                        <span className={`${match.colorClass.split(' ')[0]} text-[12px] font-bold`}>{match.matchScore}% Match</span>
+                        <span className={`${match.colorClass.split(' ')[0]} text-[12px] font-bold`}>{match.matchPercentage}% Match</span>
                       </div>
                       <div className="flex flex-wrap gap-2 mb-6 justify-center">
-                        {match.tags.slice(0, 2).map((tag: string) => (
+                        {match.tags.map((tag: string) => (
                           <span key={tag} className="bg-slate-50 text-[10px] text-slate-500 px-2 py-1 rounded border border-slate-100">{tag}</span>
                         ))}
                       </div>
-                      <Link to="/careers/$careerId" params={{ careerId: match.id.toString() }} className={`block text-center w-full py-2 transition-colors text-[12px] font-bold rounded-lg ${isTop ? 'bg-[#e6f6f2] text-[#00a878] hover:bg-[#d0efe6] border border-[#00a878]/20' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}>
-                        View Details →
-                      </Link>
+                      <div className={`block text-center w-full py-2 transition-colors text-[12px] font-bold rounded-lg ${isActive ? 'bg-[#e6f6f2] text-[#00a878] border border-[#00a878]/20' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}>
+                        {isActive ? 'Viewing Details' : 'View Details →'}
+                      </div>
                     </div>
                   )
                 })}
@@ -316,195 +256,62 @@ function CareerGuidancePage() {
             </section>
 
             {/* Career Details Section */}
+            {activeCareer && (
             <section className="bg-white rounded-3xl p-6 md:p-8 shadow-[0_4px_20px_-2px_rgba(0,0,0,0.05)] border border-slate-100">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-8">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 pb-6 border-b border-slate-100">
                 <div className="flex items-center gap-3 flex-wrap">
-                  <h3 className="text-xl font-extrabold text-slate-900">Career Details: {activeCareer.title}</h3>
-                  <span className="bg-emerald-50 text-[#00a878] px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap">{activeCareer.matchScore}% Match</span>
+                  <h3 className="text-2xl font-extrabold text-slate-900">{activeCareer.title}</h3>
+                  <span className="bg-emerald-50 text-[#00a878] px-3 py-1 rounded-full text-sm font-bold whitespace-nowrap">{activeCareer.matchPercentage}% AI Match</span>
                 </div>
               </div>
 
-              <div className="flex flex-col lg:flex-row gap-8 min-w-0">
-                {/* Illustration Area */}
-                <div className="relative mx-auto w-full max-w-[280px] lg:w-[240px] shrink-0">
-                  <div className="w-full aspect-square lg:h-[240px] bg-slate-50 rounded-2xl relative overflow-hidden flex items-end justify-center border border-slate-100">
-                    <div className="absolute top-6 left-6 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center shadow-sm"><span className="text-xs">🐍</span></div>
-                    <div className="absolute top-8 right-6 w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center shadow-sm"><span className="text-xs">&lt;/&gt;</span></div>
-                    <div className="absolute bottom-24 right-3 w-8 h-8 bg-red-50 rounded-full flex items-center justify-center shadow-sm"><span className="text-xs">☕</span></div>
-                    <div className="absolute bottom-8 left-3 w-8 h-8 bg-blue-50 rounded-full flex items-center justify-center shadow-sm"><span className="text-xs">⚛️</span></div>
-                    {activeCareer.illustrationUrl && (
-                      <img alt="Career Illustration" className="w-[80%] h-[80%] object-contain z-10 relative bottom-[-10px]" src={activeCareer.illustrationUrl} />
-                    )}
-                  </div>
+              <div className="space-y-8 min-w-0 flex-1">
+                <div className="bg-slate-50 p-5 rounded-2xl">
+                    <h5 className="text-sm font-extrabold text-slate-900 mb-2">AI Reasoning</h5>
+                    <p className="text-sm text-slate-600 leading-relaxed font-medium">{activeCareer.reason}</p>
                 </div>
-
-                {/* Stats & Info */}
-                <div className="space-y-6 min-w-0 flex-1">
-                  {/* Top Stats */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-emerald-50 rounded-lg flex items-center justify-center text-[#00a878] text-lg shrink-0">💰</div>
-                      <div>
-                        <p className="text-[11px] text-slate-500 font-medium">Average Salary</p>
-                        <p className="text-sm font-bold text-slate-900">{activeCareer.averageSalary}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-orange-50 rounded-lg flex items-center justify-center text-orange-500 text-lg shrink-0">🔥</div>
-                      <div>
-                        <p className="text-[11px] text-slate-500 font-medium">Demand Level</p>
-                        <p className="text-sm font-bold text-slate-900">{activeCareer.demandLevel}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 col-span-2 sm:col-span-1">
-                      <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center text-blue-500 text-lg shrink-0">📈</div>
-                      <div>
-                        <p className="text-[11px] text-slate-500 font-medium">Job Growth</p>
-                        <p className="text-sm font-bold text-slate-900">{activeCareer.jobGrowth}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Required Skills & Industries */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2 pb-2">
-                    <div>
-                      <h5 className="text-sm font-extrabold text-slate-900 mb-3">Required Skills</h5>
-                      <ul className="space-y-2">
-                        {activeCareer.requiredSkills.slice(0, 4).map((skill: string) => (
-                          <li key={skill} className="flex items-center gap-2 text-xs text-slate-600 font-medium"><span className="text-[#00a878]">✔</span> {skill}</li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div>
-                      <h5 className="text-sm font-extrabold text-slate-900 mb-3">Top Industries</h5>
-                      <ul className="space-y-2">
-                        {activeCareer.topIndustries.slice(0, 3).map((industry: string) => (
-                          <li key={industry} className="flex items-center gap-2 text-xs text-slate-600 font-medium"><span className="text-slate-300 text-lg leading-none">•</span> {industry}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
+                
+                <div className="flex justify-end">
+                    <button 
+                       onClick={() => handleSetTargetCareer(activeCareer.title)}
+                       disabled={isSettingTarget || profileData?.selectedCareer === activeCareer.title}
+                       className="bg-[#00a878] text-white px-6 py-3 rounded-xl font-bold shadow-sm hover:bg-emerald-600 transition-colors disabled:opacity-50 flex items-center gap-2"
+                    >
+                       {isSettingTarget ? (
+                          <><span className="material-symbols-outlined animate-spin text-[18px]">refresh</span> Setting...</>
+                       ) : profileData?.selectedCareer === activeCareer.title ? (
+                          <><span className="material-symbols-outlined text-[18px]">check_circle</span> Target Career Set</>
+                       ) : (
+                          <><span className="material-symbols-outlined text-[18px]">flag</span> Set as Target Career</>
+                       )}
+                    </button>
                 </div>
               </div>
             </section>
-
-            {/* AI Insights Section */}
-            <section className="bg-[#e6f6f2] p-6 sm:p-8 rounded-3xl relative overflow-hidden shadow-sm border border-emerald-100 min-h-[300px]">
-              {/* Background elements */}
-              <div className="absolute top-4 right-4 text-[#00a878]/20 text-3xl select-none">✦</div>
-              <div className="absolute bottom-4 left-4 text-[#00a878]/20 text-3xl select-none">✦</div>
-
-              <div className="flex items-center justify-between mb-6 relative z-10">
-                <h3 className="text-lg font-extrabold text-slate-900">AI Insights</h3>
-                <button 
-                  onClick={handleRegenerate} 
-                  disabled={aiInsightsLoading || isRegenerating}
-                  className="text-xs bg-white text-[#00a878] font-bold px-3 py-1.5 rounded-lg shadow-sm border border-emerald-100 hover:bg-emerald-50 transition-colors disabled:opacity-50 flex items-center gap-1"
-                >
-                  <span className={`material-symbols-outlined text-[14px] ${isRegenerating ? 'animate-spin' : ''}`}>refresh</span>
-                  Regenerate
-                </button>
-              </div>
-
-              {(aiInsightsLoading && !aiInsights) || isRegenerating ? (
-                <div className="flex flex-col items-center justify-center h-40 relative z-10">
-                   <div className="w-10 h-10 border-4 border-[#00a878]/20 rounded-full animate-spin border-t-[#00a878]"></div>
-                   <p className="text-slate-500 font-medium mt-4 text-sm">Generating personalized career insights...</p>
-                </div>
-              ) : aiInsights ? (
-                <>
-                  <div className="flex flex-col items-center mb-8 relative z-10">
-                    <div className="w-[120px] h-[120px] relative mb-6">
-                      <div className="absolute inset-0 bg-[#00a878] rounded-full opacity-10 animate-pulse"></div>
-                      <div className="w-full h-full border-4 border-[#00a878]/20 rounded-full flex items-center justify-center p-2 bg-white/50 backdrop-blur-sm">
-                        <div className="w-full h-full bg-slate-900 rounded-full flex flex-col items-center justify-center gap-2 shadow-inner">
-                          <div className="flex gap-4">
-                            <div className="w-3 h-1 bg-[#00a878] rounded-full"></div>
-                            <div className="w-3 h-1 bg-[#00a878] rounded-full"></div>
-                          </div>
-                          <div className="w-8 h-1 bg-[#00a878]/50 rounded-full"></div>
-                        </div>
-                      </div>
-                      <div className="absolute -right-2 top-0 bg-white p-1.5 rounded-full shadow-sm text-lg">💡</div>
-                    </div>
-
-                    <p className="text-center text-sm leading-relaxed text-slate-700 font-medium whitespace-pre-wrap">
-                      {aiInsights.explanation}
-                    </p>
-                  </div>
-
-                  <div className="space-y-4 relative z-10 bg-white/60 p-5 rounded-2xl backdrop-blur-sm">
-                    <p className="text-sm font-extrabold text-slate-900">Next Steps</p>
-                    <ul className="space-y-3">
-                      {aiInsights.reasons.map((reason: any, idx: number) => (
-                        <li
-                          key={idx}
-                          className="flex items-start gap-3 text-xs text-slate-700 font-medium leading-snug"
-                        >
-                          <span className="w-5 h-5 shrink-0 bg-[#00a878]/10 text-[#00a878] rounded-full flex items-center justify-center text-[10px] mt-px">
-                            ✔
-                          </span>
-                          <div className="whitespace-pre-wrap break-words">
-                            {typeof reason === 'string' ? reason : (
-                              <>
-                                <div>{reason.description || JSON.stringify(reason)}</div>
-                                {reason.timeEstimate && <span className="text-slate-500 text-[11px] block mt-1">{reason.timeEstimate}</span>}
-                              </>
-                            )}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </>
-              ) : (
-                <div className="text-center text-slate-500 py-10 relative z-10">
-                  <span className="material-symbols-outlined text-4xl mb-2">error</span>
-                  <p>Could not generate insights at this time.</p>
-                </div>
-              )}
-            </section>
-
-            {/* Other Good Options */}
-            <section>
-              <h3 className="text-lg font-extrabold text-slate-900 mb-5">Other Good Career Options</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {data.otherOptions.map((option: any) => (
-                  <div key={option.title} onClick={() => setActiveCareerId(option.id)} className="bg-white border border-slate-100 p-4 rounded-2xl flex items-center gap-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
-                    <div className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center text-lg ${option.colorClass}`}>
-                      {option.icon.length > 2 ? <span className="material-symbols-outlined text-[20px]">{option.icon}</span> : option.icon}
-                    </div>
-                    <div className="min-w-0 overflow-hidden">
-                      <h6 className="text-sm font-bold text-slate-900 truncate">{option.title}</h6>
-                      <p className={`text-xs font-bold ${option.colorClass.split(' ')[0]}`}>{option.matchScore}% Match</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
+            )}
           </div>
 
           {/* RIGHT COLUMN */}
           <div className="space-y-8 min-w-0">
 
 
+
             {/* Learning Path Preview */}
             <section className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-100 shadow-sm">
               <div className="flex items-center justify-between mb-8">
-                <h3 className="text-lg font-extrabold text-slate-900">Learning Path Preview</h3>
-                <a href="#" className="text-[#00a878] text-xs font-bold hover:underline shrink-0 ml-4">View Full Roadmap →</a>
+                <h3 className="text-lg font-extrabold text-slate-900">Recommended Steps</h3>
               </div>
 
               <div className="space-y-8 relative before:absolute before:inset-0 before:ml-3 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-slate-200 before:to-transparent">
 
-                {data.roadmap.map((step: any) => (
-                  <div key={step.step} className="relative flex items-start gap-4">
-                    <div className={`w-6 h-6 shrink-0 ${step.color} text-white rounded-full flex items-center justify-center text-xs font-bold relative z-10 shadow-sm ring-4 ring-white`}>
-                      {step.step}
+                {data?.roadmap?.slice(0, 5).map((step: any, idx: number) => (
+                  <div key={idx} className="relative flex items-start gap-4">
+                    <div className={`w-6 h-6 shrink-0 bg-slate-900 text-white rounded-full flex items-center justify-center text-xs font-bold relative z-10 shadow-sm ring-4 ring-white`}>
+                      {idx + 1}
                     </div>
                     <div className="pt-0.5">
-                      <h6 className="text-sm font-extrabold text-slate-900 mb-1">{step.title}</h6>
-                      <p className="text-xs text-slate-500 font-medium">{step.desc}</p>
+                      <h6 className="text-sm font-extrabold text-slate-900 mb-1">{step.step}</h6>
+                      <p className="text-xs text-slate-500 font-medium">{step.description}</p>
                     </div>
                   </div>
                 ))}

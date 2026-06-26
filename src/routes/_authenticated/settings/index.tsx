@@ -62,6 +62,7 @@ function SettingsPage() {
 
   useEffect(() => {
     if (context?.sessionUser || context?.profile) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setProfile(prev => ({
         ...prev,
         name: context?.sessionUser?.name || prev.name,
@@ -78,7 +79,7 @@ function SettingsPage() {
     setSaveSuccess(false)
     setError(null)
     try {
-      const response = await fetch("http://localhost:3000/api/profile", {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000/api"}/profile`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -97,6 +98,8 @@ function SettingsPage() {
       await queryClient.invalidateQueries({ queryKey: ['recommendations-ai'] });
       await queryClient.invalidateQueries({ queryKey: ['assessment-data'] });
       await queryClient.invalidateQueries({ queryKey: ['assessment-ai'] });
+      await queryClient.invalidateQueries({ queryKey: ['roadmap'] });
+      await queryClient.invalidateQueries({ queryKey: ['roadmapProgress'] });
 
       setTimeout(() => setSaveSuccess(false), 3000);
       router.invalidate();

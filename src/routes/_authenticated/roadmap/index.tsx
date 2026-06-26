@@ -1,135 +1,220 @@
 import { createFileRoute, useRouteContext } from '@tanstack/react-router'
-import { useState, useEffect } from 'react'
+import { useState, useMemo } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { DashboardLayout } from '../../../components/layout/DashboardLayout'
-
 
 export const Route = createFileRoute('/_authenticated/roadmap/')({
   component: RoadmapPage,
 })
 
-const MOCK_ROADMAP_DATA = {
-  header: {
-    targetCareer: 'Software Engineer',
-    targetDate: 'June 2028',
-    currentStage: 'Phase 3 of 6',
-    progress: 60
-  },
-  timeline: [
-    {
-      id: 1,
-      phase: 'Phase 1',
-      status: 'Completed',
-      title: 'Programming Fundamentals',
-      desc: 'Build strong programming foundation.',
-      items: [
-        { name: 'Python Basics', done: true },
-        { name: 'C Programming', done: true },
-        { name: 'OOP Concepts', done: true },
-        { name: 'Basic Problem Solving', done: true }
-      ],
-      progress: 100,
-      active: false
-    },
-    {
-      id: 2,
-      phase: 'Phase 2',
-      status: 'Completed',
-      title: 'Web Development Basics',
-      desc: 'Learn the building blocks of web.',
-      items: [
-        { name: 'HTML', done: true },
-        { name: 'CSS', done: true },
-        { name: 'JavaScript', done: true },
-        { name: 'Responsive Design', done: true }
-      ],
-      progress: 100,
-      active: false
-    },
-    {
-      id: 3,
-      phase: 'Phase 3',
-      status: 'In Progress',
-      title: 'Frontend Development',
-      desc: 'Master modern frontend technologies.',
-      items: [
-        { name: 'React Basics', done: true },
-        { name: 'React Projects', done: false },
-        { name: 'API Integration', done: false }
-      ],
-      progress: 60,
-      active: true
-    },
-    {
-      id: 4,
-      phase: 'Phase 4',
-      status: 'Upcoming',
-      title: 'Backend Development',
-      desc: 'Learn server-side development.',
-      items: [
-        { name: 'Node.js', done: false },
-        { name: 'Express.js', done: false },
-        { name: 'Databases (MongoDB, SQL)', done: false },
-        { name: 'REST APIs', done: false }
-      ],
-      progress: 0,
-      active: false
-    }
-  ],
-  nextAction: {
-    title: 'Complete React Projects',
-    desc: 'Building projects will strengthen your skills and improve your portfolio.',
-    time: '2 Weeks',
-    priority: 'High'
-  },
-  milestones: [
-    { id: 1, name: 'Frontend Dev', icon: 'code', state: 'past' },
-    { id: 2, name: 'Get Internship', icon: 'work', state: 'current' },
-    { id: 3, name: 'Full Stack', icon: 'dns', state: 'future' },
-    { id: 4, name: 'Software Eng', icon: 'emoji_events', state: 'future' }
-  ],
-  insights: [
-    'You are on track! Keep learning consistently.',
-    'Focus more on React Projects to strengthen your portfolio.',
-    'After completing Phase 3, you will be 75% closer to your goal.'
-  ]
-}
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 
 function RoadmapPage() {
   const context = useRouteContext({ strict: false }) as any;
-  const completionPercentage = context?.completionPercentage || 0;
+  const sessionUser = context?.sessionUser;
+  const userId = sessionUser?.id;
+  const profileData = context?.profile;
 
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [expandedPhases, setExpandedPhases] = useState<Record<number, boolean>>({
-    1: false,
-    2: false,
-    3: true,
-    4: false
-  })
+  const queryClient = useQueryClient();
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [expandedPhases, setExpandedPhases] = useState<Record<number, boolean>>({ 0: true, 1: true });
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 1200)
-    return () => clearTimeout(timer)
-  }, [])
+  const showToast = (message: string) => {
+    setToastMessage(message);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
 
-  const togglePhase = (id: number) => {
-    setExpandedPhases(prev => ({ ...prev, [id]: !prev[id] }))
-  }
+  const { data: roadmapData, isLoading: isRoadmapLoading, error: roadmapError, refetch: refetchRoadmap } = useQuery({
+    queryKey: ['roadmap', userId, profileData?.updatedAt],
+    queryFn: async () => {
+      if (!userId) throw new Error("No user ID found");
+      const res = await fetch(`${API_URL}/roadmap/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ userId }),
+      });
+      if (!res.ok) throw new Error("Failed to fetch roadmap data");
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message || "Failed to generate roadmap");
+      return json;
+    },
+    enabled: !!userId,
+    staleTime: 1000 * 60 * 60,
+    retry: false,
+    refetchInterval: (query: any) => {
+        const data = query.state?.data as any;
+        return data?._meta?.isRefreshing ? 3000 : false;
+    }
+  });
 
+  const { data: progressRes, isLoading: isProgressLoading, refetch: refetchProgress } = useQuery({
+    queryKey: ['roadmapProgress', userId, roadmapData?.career],
+    queryFn: async () => {
+      if (!userId || !roadmapData?.career) throw new Error("No user ID or career found");
+      const res = await fetch(`${API_URL}/roadmap/progress`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ userId, career: roadmapData.career }),
+      });
+      if (!res.ok) throw new Error("Failed to fetch progress");
+      return res.json();
+    },
+    enabled: !!userId && !!roadmapData?.career,
+  });
 
+  const { data: analysisDataRes, isLoading: isAnalysisLoading } = useQuery({
+    queryKey: ['roadmapAnalysis', userId, roadmapData?.career],
+    queryFn: async () => {
+      if (!userId || !roadmapData?.career) throw new Error("No user ID found");
+      const res = await fetch(`${API_URL}/roadmap/analyze`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ userId }),
+      });
+      if (!res.ok) throw new Error("Failed to fetch roadmap analysis");
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message || "Failed to analyze roadmap");
+      return json.analysis;
+    },
+    enabled: !!userId && !!roadmapData?.career,
+  });
 
-  if (loading) {
+  const progressRecords = progressRes?.progress || [];
+  const aiAnalysis = analysisDataRes;
+
+  const handleRegenerate = async () => {
+    setIsRegenerating(true);
+    try {
+      const res = await fetch(`${API_URL}/roadmap/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ userId, regenerate: true }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        queryClient.setQueryData(['roadmap', userId, profileData?.updatedAt], json);
+        await queryClient.invalidateQueries({ queryKey: ['roadmapProgress'] });
+        await queryClient.invalidateQueries({ queryKey: ['roadmapAnalysis'] });
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
+
+  const updatePhaseStatus = async (phaseId: number, status: string, phaseTitle: string) => {
+    try {
+      const res = await fetch(`${API_URL}/roadmap/phase/${phaseId}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ userId, career: roadmapData.career, status }),
+      });
+      
+      if (res.ok) {
+        await queryClient.invalidateQueries({ queryKey: ['roadmap', userId] });
+        await refetchRoadmap();
+        await refetchProgress();
+        if (status === 'COMPLETED') {
+          showToast(`Phase ${phaseId + 1} completed successfully! 🎉`);
+          setExpandedPhases(prev => ({ ...prev, [phaseId + 1]: true }));
+        } else if (status === 'IN_PROGRESS') {
+          showToast(`Started Phase ${phaseId + 1}!`);
+        }
+      }
+    } catch (e) {
+      console.error("Failed to update status", e);
+    }
+  };
+
+  const togglePhase = (index: number) => {
+    setExpandedPhases(prev => ({ ...prev, [index]: !prev[index] }));
+  };
+
+  const { timeline, overallProgress, currentStageText, nextAction } = useMemo(() => {
+    if (!roadmapData?.phases) return { timeline: [], overallProgress: 0, currentStageText: 'N/A', nextAction: aiAnalysis?.nextAction };
+
+    let completedCount = 0;
+    let firstIncompleteIndex = -1;
+
+    // 1. Merge AI roadmap phases with roadmap_progress
+    const computedTimeline = roadmapData.phases.map((phase: any, index: number) => {
+      const record = progressRecords?.find((p: any) => p.phaseId === index);
+      // Fallback to phase.status if record doesn't exist yet, else NOT_STARTED
+      const status = record?.status || phase.status || 'NOT_STARTED';
+
+      if (status === 'COMPLETED') {
+        completedCount++;
+      } else if (firstIncompleteIndex === -1) {
+        firstIncompleteIndex = index;
+      }
+
+      // 2. Expose status, progress, isCompleted
+      return {
+        ...phase,
+        id: index,
+        status: status,
+        progress: status === 'COMPLETED' ? 100 : status === 'IN_PROGRESS' ? 50 : 0,
+        isCompleted: status === 'COMPLETED',
+        isInProgress: status === 'IN_PROGRESS',
+        isLocked: status === 'LOCKED',
+        items: (phase.skills || []).map((s: string) => ({
+          name: s,
+          done: status === 'COMPLETED'
+        }))
+      };
+    });
+
+    if (firstIncompleteIndex === -1 && computedTimeline.length > 0) {
+      firstIncompleteIndex = computedTimeline.length - 1;
+    }
+
+    // 4. Overall Progress
+    const calculatedProgress = computedTimeline.length > 0 ? Math.round((completedCount / computedTimeline.length) * 100) : 0;
+    
+    // 5. Current Stage should always be the first incomplete phase.
+    const currentStage = computedTimeline.length > 0 ? `Phase ${firstIncompleteIndex + 1} of ${computedTimeline.length}` : 'Not Started';
+
+    // 6. Next Best Action should also point to the first incomplete phase.
+    let computedNextAction = aiAnalysis?.nextAction;
+    if (firstIncompleteIndex !== -1 && computedTimeline[firstIncompleteIndex]) {
+      const activePhase = computedTimeline[firstIncompleteIndex];
+      computedNextAction = {
+        title: activePhase.title || computedNextAction?.title || "Continue your journey",
+        reason: activePhase.objective || activePhase.description || computedNextAction?.reason || "Work on your next roadmap phase.",
+        duration: activePhase.duration || computedNextAction?.duration || "1 week",
+        priority: "High"
+      };
+    }
+
+    return {
+      timeline: computedTimeline,
+      overallProgress: calculatedProgress,
+      currentStageText: currentStage,
+      nextAction: computedNextAction
+    };
+  }, [roadmapData, progressRecords, aiAnalysis]);
+
+  const isRefreshing = roadmapData?._meta?.isRefreshing;
+
+  if ((isRoadmapLoading && !roadmapData) || isProgressLoading || (isAnalysisLoading && !aiAnalysis)) {
     return (
       <DashboardLayout>
         <div className="flex flex-col items-center justify-center min-h-[60vh]">
            <div className="w-12 h-12 border-4 border-emerald-100 rounded-full animate-spin border-t-[#00a878]"></div>
-           <p className="mt-4 text-slate-500 font-medium">Loading your personalized roadmap...</p>
+           <p className="mt-4 text-slate-500 font-medium">AI is generating your personalized career roadmap...</p>
         </div>
       </DashboardLayout>
     )
   }
 
-  if (error) {
+  if (roadmapError) {
     return (
        <DashboardLayout>
          <div className="flex flex-col items-center justify-center min-h-[60vh]">
@@ -137,64 +222,106 @@ function RoadmapPage() {
               <span className="material-symbols-outlined text-3xl">error</span>
            </div>
            <h3 className="text-lg font-bold text-slate-900 mb-2">Failed to load roadmap</h3>
-           <p className="text-slate-500 mb-6">{error}</p>
-           <button onClick={() => window.location.reload()} className="bg-[#00a878] text-white px-6 py-2 rounded-xl font-bold">Try Again</button>
+           <p className="text-slate-500 mb-6">{(roadmapError as any)?.message}</p>
+           <button onClick={() => refetchRoadmap()} className="bg-[#00a878] text-white px-6 py-2 rounded-xl font-bold">Try Again</button>
          </div>
        </DashboardLayout>
     )
   }
 
+  if (!roadmapData || !roadmapData.phases || !aiAnalysis) {
+      return (
+        <DashboardLayout>
+          <div className="flex flex-col items-center justify-center min-h-[60vh]">
+             <p className="text-slate-500 font-medium">No roadmap data available. Try generating one.</p>
+             <button onClick={handleRegenerate} className="mt-4 bg-[#00a878] text-white px-6 py-2 rounded-xl font-bold">Generate Roadmap</button>
+          </div>
+        </DashboardLayout>
+      )
+  }
+
   return (
     <DashboardLayout>
-      <div className="min-w-0 w-full max-w-7xl mx-auto pb-10">
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 bg-[#00a878] text-white px-6 py-4 rounded-2xl shadow-xl font-bold flex items-center gap-3 z-50 animate-bounce">
+          <span className="material-symbols-outlined">emoji_events</span>
+          {toastMessage}
+        </div>
+      )}
+
+      <div className="min-w-0 w-full max-w-7xl mx-auto pb-10 relative">
         
         {/* Page Header */}
-        <div className="mb-8">
-          <h2 className="text-3xl font-extrabold text-slate-900 flex items-center gap-2 mb-2">
-            Career Roadmap
-            <span className="material-symbols-outlined text-[#00a878] text-[28px]">map</span>
-          </h2>
-          <p className="text-sm font-medium text-slate-500">
-            Step-by-step plan to achieve your dream career as a {MOCK_ROADMAP_DATA.header.targetCareer}.
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+          <div>
+            <h2 className="text-3xl font-extrabold text-slate-900 flex items-center gap-2 mb-2">
+              Career Roadmap
+              <span className="material-symbols-outlined text-[#00a878] text-[28px]">map</span>
+              {isRefreshing && (
+                  <span className="ml-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-bold border border-amber-200">
+                      <span className="material-symbols-outlined text-[14px] animate-spin">sync</span>
+                      AI is refreshing roadmap in background...
+                  </span>
+              )}
+            </h2>
+            <p className="text-sm font-medium text-slate-500">
+              Step-by-step plan to achieve your dream career as a <span className="font-bold text-slate-700">{roadmapData.career}</span>.
+            </p>
+          </div>
+          <button 
+            onClick={handleRegenerate}
+            disabled={isRegenerating}
+            className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-slate-700 font-bold text-sm hover:bg-slate-50 transition-colors shadow-sm bg-white shrink-0 disabled:opacity-50"
+          >
+            <span className={`material-symbols-outlined text-[16px] ${isRegenerating ? 'animate-spin' : ''}`}>refresh</span>
+            {isRegenerating ? 'Regenerating...' : 'Regenerate Roadmap'}
+          </button>
+        </div>
+
+        {/* AI Summary Banner */}
+        <div className="bg-gradient-to-r from-emerald-50 to-[#00a878]/10 border border-emerald-100 p-6 rounded-2xl shadow-sm mb-8 relative overflow-hidden">
+          <h3 className="text-[16px] font-extrabold text-slate-900 flex items-center gap-2 mb-3">
+            <span className="material-symbols-outlined text-[#00a878]" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span> 
+            AI Roadmap Summary
+          </h3>
+          <p className="text-[14px] text-slate-700 leading-relaxed font-medium">
+            {roadmapData.summary || aiAnalysis.summary || "Your personalized step-by-step career roadmap."}
           </p>
         </div>
 
         {/* Top Metrics Row */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 min-w-0">
-          {/* Target Career */}
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex items-center gap-4 min-w-0">
             <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-[#00a878] shrink-0">
               <span className="material-symbols-outlined">code</span>
             </div>
             <div className="min-w-0">
               <p className="text-[11px] font-bold text-slate-500 mb-0.5 uppercase tracking-wider">Target Career</p>
-              <p className="text-[15px] font-extrabold text-slate-900 truncate">{MOCK_ROADMAP_DATA.header.targetCareer}</p>
+              <p className="text-[15px] font-extrabold text-slate-900 truncate">{roadmapData.career}</p>
             </div>
           </div>
 
-          {/* Target Achievement Date */}
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex items-center gap-4 min-w-0">
             <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
               <span className="material-symbols-outlined">calendar_month</span>
             </div>
             <div className="min-w-0">
-              <p className="text-[11px] font-bold text-slate-500 mb-0.5 uppercase tracking-wider">Achievement Date</p>
-              <p className="text-[15px] font-extrabold text-slate-900 truncate">{MOCK_ROADMAP_DATA.header.targetDate}</p>
+              <p className="text-[11px] font-bold text-slate-500 mb-0.5 uppercase tracking-wider">Total Duration</p>
+              <p className="text-[15px] font-extrabold text-slate-900 truncate">{aiAnalysis.estimatedDuration}</p>
             </div>
           </div>
 
-          {/* Current Stage */}
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex items-center gap-4 min-w-0">
             <div className="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
               <span className="material-symbols-outlined">flag</span>
             </div>
             <div className="min-w-0">
               <p className="text-[11px] font-bold text-slate-500 mb-0.5 uppercase tracking-wider">Current Stage</p>
-              <p className="text-[15px] font-extrabold text-slate-900 truncate">{MOCK_ROADMAP_DATA.header.currentStage}</p>
+              <p className="text-[15px] font-extrabold text-slate-900 truncate">{currentStageText}</p>
             </div>
           </div>
 
-          {/* Overall Progress */}
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex items-center gap-4 min-w-0">
             <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-[#00a878] shrink-0">
               <span className="material-symbols-outlined">trending_up</span>
@@ -202,10 +329,10 @@ function RoadmapPage() {
             <div className="flex-1 min-w-0">
               <div className="flex justify-between items-end mb-2">
                 <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Overall</p>
-                <span className="text-[15px] font-black text-[#00a878]">{MOCK_ROADMAP_DATA.header.progress}%</span>
+                <span className="text-[15px] font-black text-[#00a878]">{overallProgress}%</span>
               </div>
               <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                <div className="h-full bg-[#00a878] rounded-full" style={{ width: `${MOCK_ROADMAP_DATA.header.progress}%` }}></div>
+                <div className="h-full bg-[#00a878] rounded-full transition-all duration-500" style={{ width: `${overallProgress}%` }}></div>
               </div>
             </div>
           </div>
@@ -216,67 +343,124 @@ function RoadmapPage() {
           
           {/* Left Column: The Roadmap */}
           <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-100 p-6 min-w-0">
-            {/* Tabs */}
             <div className="flex flex-wrap gap-6 sm:gap-8 border-b border-slate-100 mb-8 pb-0">
-              <button className="text-sm font-extrabold text-[#00a878] border-b-2 border-[#00a878] pb-3 -mb-[2px]">Roadmap</button>
-              <button className="text-sm font-bold text-slate-500 hover:text-[#00a878] transition-colors pb-3">Milestones</button>
-              <button className="text-sm font-bold text-slate-500 hover:text-[#00a878] transition-colors pb-3">Timeline View</button>
-              <button className="text-sm font-bold text-slate-500 hover:text-[#00a878] transition-colors pb-3">Recommendations</button>
+              <button className="text-sm font-extrabold text-[#00a878] border-b-2 border-[#00a878] pb-3 -mb-[2px]">Roadmap Phases</button>
             </div>
 
-            {/* Timeline Content */}
             <div className="relative pl-6 sm:pl-8 border-l-2 border-slate-100 space-y-6 sm:ml-4">
-              {MOCK_ROADMAP_DATA.timeline.map((phase) => (
+              {timeline.map((phase: any) => {
+                const { isCompleted, isInProgress, isLocked } = phase;
+                
+                return (
                 <div key={phase.id} className={`relative rounded-xl border p-5 flex flex-col sm:flex-row gap-4 sm:gap-6 items-start transition-all
-                  ${phase.status === 'Completed' ? 'bg-white border-slate-100 hover:shadow-sm' : 
-                    phase.status === 'In Progress' ? 'bg-blue-50/50 border-blue-100 shadow-sm' : 
-                    'bg-white border-slate-100 opacity-60 hover:opacity-100'}`}
+                  ${isCompleted ? 'bg-white border-slate-100 hover:shadow-sm' : 
+                    isInProgress ? 'bg-blue-50/50 border-blue-100 shadow-sm' : 
+                    isLocked ? 'bg-slate-50 border-slate-100 opacity-60' :
+                    'bg-white border-slate-100 hover:shadow-sm'}`}
                 >
-                  {/* Timeline Node */}
                   <div className={`absolute -left-[35px] sm:-left-[43px] top-5 w-6 h-6 rounded-full flex items-center justify-center border-4 border-white
-                    ${phase.status === 'Completed' ? 'bg-[#00a878] text-white' : 
-                      phase.status === 'In Progress' ? 'bg-blue-500 text-white' : 
+                    ${isCompleted ? 'bg-[#00a878] text-white' : 
+                      isInProgress ? 'bg-blue-500 text-white' : 
                       'bg-slate-200 text-slate-500'}`}
                   >
                     <span className="material-symbols-outlined text-[14px] font-bold">
-                      {phase.status === 'Completed' ? 'check' : phase.status === 'In Progress' ? 'rocket_launch' : 'lock'}
+                      {isCompleted ? 'check' : isInProgress ? 'rocket_launch' : 'circle'}
                     </span>
                   </div>
 
                   <div className="w-full sm:w-32 flex-shrink-0">
-                    <p className="text-[15px] font-extrabold text-slate-900">{phase.phase}</p>
-                    <p className={`text-[12px] font-bold uppercase tracking-wide
-                      ${phase.status === 'Completed' ? 'text-[#00a878]' : 
-                        phase.status === 'In Progress' ? 'text-blue-600' : 'text-slate-500'}`}
+                    <p className="text-[15px] font-extrabold text-slate-900">Phase {phase.phase}</p>
+                    <p className={`text-[12px] font-bold uppercase tracking-wide mb-2
+                      ${isCompleted ? 'text-[#00a878]' : 
+                        isInProgress ? 'text-blue-600' : 
+                        'text-slate-500'}`}
                     >
-                      {phase.status}
+                      {phase.status.replace('_', ' ')}
+                    </p>
+                    <p className="text-[11px] font-medium text-slate-500 bg-slate-100 px-2 py-1 rounded inline-block">
+                      <span className="material-symbols-outlined text-[10px] mr-1">schedule</span>
+                      {phase.duration || "N/A"}
                     </p>
                   </div>
 
                   <div className="flex-1 min-w-0 w-full">
-                    <h4 className="text-[16px] font-extrabold text-slate-900 mb-1 truncate">{phase.title}</h4>
-                    <p className="text-[13px] font-medium text-slate-500 mb-4">{phase.desc}</p>
+                    <h4 className="text-[16px] font-extrabold text-slate-900 mb-2">{phase.title}</h4>
+                    <div className="bg-slate-50 p-3 rounded-xl mb-4 border border-slate-100">
+                      <p className="text-[12px] font-bold text-slate-700 uppercase tracking-wide mb-1">Objective</p>
+                      <p className="text-[13px] font-medium text-slate-600">{phase.objective || phase.description || "Complete core skills."}</p>
+                    </div>
                     
                     {expandedPhases[phase.id] && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-4">
-                        {phase.items.map((item, idx) => (
-                          <div key={idx} className="flex items-start gap-2">
-                            <span className={`material-symbols-outlined text-[18px] shrink-0 ${item.done ? 'text-[#00a878]' : 'text-slate-300'}`} style={{ fontVariationSettings: item.done ? "'FILL' 1" : "'FILL' 0" }}>
-                              {item.done ? 'check_circle' : 'radio_button_unchecked'}
-                            </span>
-                            <span className={`text-[13px] font-medium leading-tight ${item.done ? 'text-slate-700' : 'text-slate-500'}`}>
-                              {item.name}
-                            </span>
+                      <div className="space-y-4 mb-4">
+                        {/* Skills */}
+                        {phase.items && phase.items.length > 0 && (
+                          <div>
+                            <p className="text-[12px] font-bold text-slate-500 uppercase tracking-wide mb-2">Technologies & Skills</p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-y-2 gap-x-4">
+                              {phase.items.map((item: any, idx: number) => (
+                                <div key={idx} className="flex items-start gap-2">
+                                  <span className={`material-symbols-outlined text-[16px] shrink-0 mt-0.5 ${item.done ? 'text-[#00a878]' : 'text-slate-300'}`} style={{ fontVariationSettings: item.done ? "'FILL' 1" : "'FILL' 0" }}>
+                                    {item.done ? 'check_circle' : 'radio_button_unchecked'}
+                                  </span>
+                                  <span className={`text-[13px] font-medium leading-tight ${item.done ? 'text-slate-700' : 'text-slate-600'}`}>
+                                    {item.name}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                        ))}
+                        )}
+
+                        {/* Projects */}
+                        {phase.projects && phase.projects.length > 0 && (
+                          <div className="pt-2 border-t border-slate-100">
+                            <p className="text-[12px] font-bold text-slate-500 uppercase tracking-wide mb-2">Milestone Projects</p>
+                            <ul className="space-y-1.5">
+                              {phase.projects.map((proj: string, pIdx: number) => (
+                                <li key={pIdx} className="text-[13px] text-slate-700 flex items-start gap-2">
+                                  <span className="material-symbols-outlined text-[14px] text-indigo-400 mt-0.5">build</span>
+                                  {proj}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Completion Criteria */}
+                        {phase.completion && (
+                          <div className="pt-2 border-t border-slate-100">
+                            <p className="text-[12px] font-bold text-slate-500 uppercase tracking-wide mb-1">Expected Outcome</p>
+                            <p className="text-[13px] font-medium text-slate-600">{phase.completion}</p>
+                          </div>
+                        )}
                       </div>
                     )}
+
+                    {/* Action Buttons */}
+                    <div className="flex flex-wrap gap-2 mt-4">
+                      {!isCompleted && (
+                         <button 
+                           onClick={() => updatePhaseStatus(phase.id, 'COMPLETED', phase.title)}
+                           className="text-[12px] font-bold bg-[#00a878] text-white px-4 py-1.5 rounded-lg hover:bg-emerald-600 transition-colors flex items-center gap-1"
+                         >
+                           <span className="material-symbols-outlined text-[14px]">done_all</span> Mark as Complete
+                         </button>
+                      )}
+                      {isCompleted && (
+                         <button 
+                           onClick={() => updatePhaseStatus(phase.id, 'NOT_STARTED', phase.title)}
+                           className="text-[12px] font-bold bg-slate-100 text-slate-600 px-4 py-1.5 rounded-lg hover:bg-slate-200 transition-colors border border-slate-200 flex items-center gap-1"
+                         >
+                           <span className="material-symbols-outlined text-[14px]">undo</span> Mark Incomplete
+                         </button>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-4 self-end sm:self-start w-full sm:w-auto justify-between sm:justify-start mt-2 sm:mt-0">
+                  <div className="flex items-center gap-4 self-end sm:self-start w-full sm:w-auto justify-between sm:justify-start mt-4 sm:mt-0">
                     <span className={`text-xs font-bold px-3 py-1 rounded-full
-                      ${phase.status === 'Completed' ? 'bg-[#00a878]/10 text-[#00a878]' : 
-                        phase.status === 'In Progress' ? 'bg-blue-100 text-blue-600' : 
+                      ${isCompleted ? 'bg-[#00a878]/10 text-[#00a878]' : 
+                        isInProgress ? 'bg-blue-100 text-blue-600' : 
                         'bg-slate-100 text-slate-500'}`}
                     >
                       {phase.progress}%
@@ -286,74 +470,40 @@ function RoadmapPage() {
                     </button>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
-
-            <button className="w-full mt-8 py-3.5 border border-slate-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors flex items-center justify-center gap-2">
-              View Full Timeline <span className="material-symbols-outlined text-[18px]">chevron_right</span>
-            </button>
           </div>
 
-          {/* Right Column: Actions & Insights */}
+          {/* Right Column */}
           <div className="space-y-6 min-w-0">
             
-            {/* Next Best Action Card */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 min-w-0">
-              <h3 className="text-[17px] font-extrabold text-slate-900 mb-5">Next Best Action</h3>
-              <div className="flex gap-4 items-start mb-6">
-                <div className="w-14 h-14 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <span className="material-symbols-outlined text-blue-500 text-[26px]">smart_toy</span>
-                </div>
-                <div className="min-w-0">
-                  <h4 className="text-[14px] font-extrabold text-slate-900 mb-1.5 leading-tight">{MOCK_ROADMAP_DATA.nextAction.title}</h4>
-                  <p className="text-[13px] font-medium text-slate-500 mb-3 leading-relaxed">
-                    {MOCK_ROADMAP_DATA.nextAction.desc}
-                  </p>
-                  <div className="flex flex-wrap gap-3">
-                    <div className="flex items-center gap-1.5 text-slate-500 text-[12px] font-bold">
-                      <span className="material-symbols-outlined text-[16px]">schedule</span> {MOCK_ROADMAP_DATA.nextAction.time}
-                    </div>
-                    <div className="flex items-center gap-1.5 text-red-500 text-[12px] font-bold">
-                      <span className="material-symbols-outlined text-[16px]">flag</span> {MOCK_ROADMAP_DATA.nextAction.priority} Priority
+            {/* Next Action */}
+            {nextAction && (
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 min-w-0">
+                <h3 className="text-[17px] font-extrabold text-slate-900 mb-5">Next Best Action</h3>
+                <div className="flex gap-4 items-start mb-6">
+                  <div className="w-14 h-14 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <span className="material-symbols-outlined text-blue-500 text-[26px]">smart_toy</span>
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="text-[14px] font-extrabold text-slate-900 mb-1.5 leading-tight">{nextAction.title}</h4>
+                    <p className="text-[13px] font-medium text-slate-500 mb-3 leading-relaxed">
+                      {nextAction.reason}
+                    </p>
+                    <div className="flex flex-wrap gap-3">
+                      <div className="flex items-center gap-1.5 text-slate-500 text-[12px] font-bold">
+                        <span className="material-symbols-outlined text-[16px]">schedule</span> {nextAction.duration}
+                      </div>
+                      <div className="flex items-center gap-1.5 text-red-500 text-[12px] font-bold">
+                        <span className="material-symbols-outlined text-[16px]">flag</span> {nextAction.priority} Priority
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-              <button className="w-full bg-[#00a878] text-white py-3 rounded-xl text-sm font-extrabold flex items-center justify-center gap-2 hover:bg-[#008b63] transition-colors shadow-sm shadow-emerald-200">
-                  Start Now <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-              </button>
-            </div>
+            )}
 
-            {/* Milestones Overview */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 min-w-0">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-[17px] font-extrabold text-slate-900">Milestones</h3>
-                <button className="text-[#00a878] text-[13px] font-bold hover:underline">View All</button>
-              </div>
-              
-              <div className="flex justify-between relative px-2">
-                {/* Connecting Line */}
-                <div className="absolute top-6 left-8 right-8 h-[2px] bg-slate-100 -z-10"></div>
-                
-                {MOCK_ROADMAP_DATA.milestones.map(ms => (
-                  <div key={ms.id} className="flex flex-col items-center gap-2.5 bg-white">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center border-[4px] border-white
-                      ${ms.state === 'past' ? 'bg-[#00a878] text-white' : 
-                        ms.state === 'current' ? 'bg-blue-50 text-blue-600 shadow-sm' : 
-                        'bg-slate-50 text-slate-400'}`}
-                    >
-                      <span className="material-symbols-outlined text-[20px]">{ms.icon}</span>
-                    </div>
-                    <div className={`text-center ${ms.state === 'future' ? 'opacity-50' : ''}`}>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Milestone {ms.id}</p>
-                      <p className="text-[11px] font-extrabold text-slate-700 leading-tight">{ms.name}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* AI Roadmap Insights */}
+            {/* AI Insights */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 relative overflow-hidden min-w-0">
               <div className="absolute -right-4 -bottom-4 opacity-5 pointer-events-none">
                 <span className="material-symbols-outlined text-[140px] text-[#00a878]" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
@@ -363,25 +513,68 @@ function RoadmapPage() {
                 AI Roadmap Insights
               </h3>
               <ul className="space-y-4 relative z-10">
-                {MOCK_ROADMAP_DATA.insights.map((insight, idx) => (
-                  <li key={idx} className="flex items-start gap-3">
-                    <span className="material-symbols-outlined text-[18px] text-[#00a878] mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                    <p className="text-[13px] font-medium text-slate-700 leading-relaxed">{insight}</p>
-                  </li>
-                ))}
+                  {(roadmapData.insights?.length > 0 ? roadmapData.insights : aiAnalysis.insights)?.map((insight: string, idx: number) => (
+                    <li key={idx} className="flex items-start gap-3">
+                      <span className="material-symbols-outlined text-[18px] text-[#00a878] mt-0.5" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                      <p className="text-[13px] font-medium text-slate-700 leading-relaxed">{insight}</p>
+                    </li>
+                  ))}
               </ul>
             </div>
 
-            {/* Roadmap Tips Banner */}
-            <div className="bg-blue-50/50 rounded-2xl p-5 flex items-center gap-4 border border-blue-100 min-w-0">
-              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 flex-shrink-0">
-                <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>lightbulb</span>
+            {/* Milestone Predictions */}
+            {aiAnalysis.milestonePrediction && (
+              <div className="bg-slate-900 rounded-2xl shadow-sm border border-slate-800 p-6 text-white min-w-0">
+                <h3 className="text-[17px] font-extrabold flex items-center gap-2 mb-5">
+                  <span className="material-symbols-outlined text-purple-400">psychology</span>
+                  Milestone Prediction
+                </h3>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                    <span className="text-[13px] text-slate-400 font-bold uppercase tracking-wider">Internship Ready</span>
+                    <span className="text-[15px] font-black text-emerald-400">{aiAnalysis.milestonePrediction.internshipReady}</span>
+                  </div>
+                  <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                    <span className="text-[13px] text-slate-400 font-bold uppercase tracking-wider">Placement Ready</span>
+                    <span className="text-[15px] font-black text-blue-400">{aiAnalysis.milestonePrediction.placementReady}</span>
+                  </div>
+                  <div className="flex justify-between items-center pt-1">
+                    <span className="text-[13px] text-slate-400 font-bold uppercase tracking-wider">AI Confidence</span>
+                    <span className="text-[15px] font-black text-amber-400">{aiAnalysis.milestonePrediction.confidence}%</span>
+                  </div>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="font-extrabold text-slate-900 text-[14px] mb-0.5 truncate">Roadmap Tip</h4>
-                <p className="text-[12px] font-medium text-slate-600 truncate">Consistency is key! Completing this phase will significantly boost your readiness score.</p>
+            )}
+
+            {/* Suggested Projects */}
+            {aiAnalysis.suggestedProjects && aiAnalysis.suggestedProjects.length > 0 && (
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 min-w-0">
+                <h3 className="text-[17px] font-extrabold text-slate-900 flex items-center gap-2 mb-5">
+                  <span className="material-symbols-outlined text-indigo-500">build_circle</span>
+                  Suggested Projects
+                </h3>
+                <div className="space-y-4">
+                  {aiAnalysis.suggestedProjects?.map((project: any, idx: number) => (
+                    <div key={idx} className="bg-slate-50 border border-slate-100 rounded-xl p-4 hover:border-indigo-200 transition-colors">
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="text-[14px] font-extrabold text-slate-900">{project.title}</h4>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-600 uppercase tracking-wide shrink-0 ml-2">
+                          {project.difficulty}
+                        </span>
+                      </div>
+                      <p className="text-[12px] font-medium text-slate-600 mb-3 leading-relaxed">{project.reason}</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {project.skills?.map((skill: string, sIdx: number) => (
+                          <span key={sIdx} className="text-[10px] bg-white border border-slate-200 text-slate-500 px-1.5 py-0.5 rounded font-bold">
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
           </div>
         </div>

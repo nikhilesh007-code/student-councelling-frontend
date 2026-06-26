@@ -1,31 +1,82 @@
 import { createFileRoute, useRouteContext, useRouter } from '@tanstack/react-router'
 import { authClient } from '../../../lib/auth-client'
 import { DashboardLayout } from '../../../components/layout/DashboardLayout'
-import { useState, useEffect } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { useState, useEffect, useRef } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { calculateProfileCompletion } from '../../../lib/profile-utils'
 
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/ui/card"
+import { Badge } from "../../../components/ui/badge"
+import { Input } from "../../../components/ui/input"
+import { Label } from "../../../components/ui/label"
+import { Button } from "../../../components/ui/button"
+import { Separator } from "../../../components/ui/separator"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../../components/ui/select"
+import { toast } from "sonner"
+import { ChipInput } from '../../../components/ui/chip-input'
+import { 
+  UploadCloud, Plus, Trash2, Check, ChevronsUpDown, 
+  User, Briefcase, GraduationCap, Sparkles, Code, 
+  Link as LinkIcon, Target, Trophy, FileText, Award, Layers,
+  Medal
+} from 'lucide-react'
+import { Popover, PopoverContent, PopoverTrigger } from "../../../components/ui/popover"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../../../components/ui/command"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../../../components/ui/dialog"
 
 export const Route = createFileRoute('/_authenticated/profile/')({
   component: ProfilePage,
 })
 
+const CAREER_GOALS = [
+  "Frontend Developer", "Backend Developer", "Full Stack Developer", "AI Engineer", 
+  "Machine Learning Engineer", "Data Scientist", "DevOps Engineer", "Cloud Engineer", 
+  "Mobile App Developer", "Cybersecurity Engineer", "Product Manager", "Not Sure Yet"
+];
+
+const DOMAINS = [
+  "AI / Machine Learning", "Web Development", "Mobile Development", "Data Science", 
+  "Cybersecurity", "Cloud Computing", "DevOps", "Blockchain", "Game Development", "Open Source"
+];
+
+type Project = { id: string, name: string, description: string, technologies: string, githubUrl?: string }
+type Certification = { id: string, name: string, issuer: string, year: string, credentialUrl?: string }
+
 type ProfileData = {
   name?: string;
+  userType: 'Student' | 'Working Professional';
+  experienceLevel: string;
+  preferredDomains: string[];
+  projects: Project[];
+  certifications: Certification[];
+  university: string;
+  degree: string;
+  semester: string;
   branch: string;
   year: string;
-  cgpa?: string | number;
+  cgpa: string;
+  currentJobTitle: string;
+  companyName: string;
+  yearsOfExperience: string;
+  industry: string;
+  desiredRole: string;
+  currentSalary: string;
+  expectedSalary: string;
   phone: string;
-  skills: string[] | string;
-  interests: string[] | string;
+  skills: string[];
+  interests: string[];
   careerGoal: string;
   linkedin: string;
   github: string;
+  leetCode: string;
   bio: string;
 }
 
 const defaultProfile: ProfileData = {
-  name: '', branch: '', year: '', cgpa: '', phone: '', skills: [], interests: [], careerGoal: '', linkedin: '', github: '', bio: ''
+  name: '', userType: 'Student', experienceLevel: '', preferredDomains: [], projects: [], certifications: [],
+  university: '', degree: '', semester: '', branch: '', year: '', cgpa: '', currentJobTitle: '', companyName: '', yearsOfExperience: '',
+  industry: '', desiredRole: '', currentSalary: '', expectedSalary: '',
+  phone: '', skills: [], interests: [], careerGoal: '', linkedin: '', github: '', leetCode: '', bio: ''
 }
 
 function ProfilePage() {
@@ -34,7 +85,7 @@ function ProfilePage() {
   const queryClient = useQueryClient();
   
   const { data: sessionData } = authClient.useSession()
-  const userName = sessionData?.user?.name || context?.sessionUser?.name || 'Student'
+  const userName = sessionData?.user?.name || context?.sessionUser?.name || 'User'
   const userEmail = sessionData?.user?.email || context?.sessionUser?.email || 'username@example.com'
 
   const [profile, setProfile] = useState<ProfileData>(defaultProfile)
@@ -42,122 +93,220 @@ function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false)
   const [isLoading, setIsLoading] = useState(!context?.profile)
   const [isSaving, setIsSaving] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
+  
+  const [careerGoalOpen, setCareerGoalOpen] = useState(false)
+
+// Resume Upload State
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [isUploading, setIsUploading] = useState(false)
+
+  // Modals State
+  const [projectModalOpen, setProjectModalOpen] = useState(false)
+  const [editingProject, setEditingProject] = useState<Project | null>(null)
+
+  const [certModalOpen, setCertModalOpen] = useState(false)
+  const [editingCert, setEditingCert] = useState<Certification | null>(null)
+
+
 
   useEffect(() => {
     if (context?.profile) {
-      setProfile({ ...defaultProfile, ...context.profile })
-      setFormData({ ...defaultProfile, ...context.profile })
+      const p = context.profile;
+      const skillsArray = typeof p.skills === 'string' ? p.skills.split(',').map((s:string) => s.trim()).filter(Boolean) : (p.skills || []);
+      const interestsArray = typeof p.interests === 'string' ? p.interests.split(',').map((s:string) => s.trim()).filter(Boolean) : (p.interests || []);
+      
+      const loadedProfile = {
+        ...defaultProfile,
+        ...p,
+        skills: skillsArray,
+        interests: interestsArray,
+        userType: p.userType || 'Student',
+        preferredDomains: p.preferredDomains || [],
+        projects: p.projects || [],
+        certifications: p.certifications || [],
+      };
+
+      setProfile(loadedProfile)
+      setFormData(loadedProfile)
       setIsLoading(false)
     }
   }, [context?.profile])
 
-  const completionPercentage = context?.completionPercentage || 0;
+  const completionPercentage = calculateProfileCompletion(profile, { name: userName, email: userEmail }) || 0;
+
+  const missingSections = [];
+  if (!profile.careerGoal) missingSections.push("Career Goal");
+  if (profile.userType === 'Student' && (!profile.university || !profile.degree)) missingSections.push("Education Details");
+  if (profile.userType === 'Working Professional' && (!profile.currentJobTitle || !profile.companyName)) missingSections.push("Current Job Details");
+  if (!profile.skills || profile.skills.length === 0) missingSections.push("Technical Skills");
+  if (!profile.interests || profile.interests.length === 0) missingSections.push("Professional Interests");
+  if (!profile.linkedin && !profile.github) missingSections.push("Social Links");
+  if (!profile.projects || profile.projects.length === 0) missingSections.push("Portfolio Projects");
+  if (!profile.certifications || profile.certifications.length === 0) missingSections.push("Certifications");
+  
+  // Suggest Resume Upload if they have multiple missing core fields
+  if (missingSections.length > 1) missingSections.push("Resume Upload (Recommended)");
+
 
   const handleSave = async () => {
-    setError('')
-    setSuccess('')
-    if (!formData.branch || !formData.year || !formData.careerGoal) {
-      setError('Branch, Year, and Career Goal are required.')
-      return
+    if (formData.userType === 'Student') {
+      if (!formData.branch || !formData.year || !formData.careerGoal) {
+        toast.error('Branch, Year, and Career Goal are required for Students.')
+        return
+      }
+    } else {
+      if (!formData.currentJobTitle || !formData.careerGoal) {
+        toast.error('Current Job Title and Career Goal are required for Professionals.')
+        return
+      }
     }
 
     setIsSaving(true)
     try {
-      const skillsArray = typeof formData.skills === 'string' 
-        ? formData.skills.split(',').map(s => s.trim()).filter(Boolean) 
-        : formData.skills;
-        
-      const interestsArray = typeof formData.interests === 'string'
-        ? formData.interests.split(',').map(s => s.trim()).filter(Boolean)
-        : formData.interests;
+      const response = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000/api"}/profile`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          userId: sessionData?.user?.id,
+          ...formData
+        }),
+      });
 
-      const payload = {
-        ...formData,
-        skills: skillsArray,
-        interests: interestsArray,
-      }
+      const result = await response.json();
+      if (!result.success) throw new Error("Profile update failed");
 
-      const response = await fetch(
-  "http://localhost:3000/api/profile",
-  {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    credentials: "include",
-    body: JSON.stringify({
-      userId: sessionData?.user?.id,
-      name: payload.name,
-      branch: payload.branch,
-      year: payload.year ? Number(payload.year) : null,
-      cgpa: payload.cgpa ? Number(payload.cgpa) : null,
-      skills: payload.skills,
-      interests: payload.interests,
-      careerGoal: payload.careerGoal,
-      phone: payload.phone,
-      bio: payload.bio,
-      github: payload.github,
-      linkedin: payload.linkedin,
-    }),
-  }
-);
-
-const result = await response.json();
-
-if (!result.success) {
-  throw new Error("Profile update failed");
-}
-
-setProfile({
-  ...defaultProfile,
-  ...result.data,
-});
-
-setFormData({
-  ...defaultProfile,
-  ...result.data,
-});
+      setProfile({ ...defaultProfile, ...result.data, skills: formData.skills, interests: formData.interests, preferredDomains: formData.preferredDomains, projects: formData.projects, certifications: formData.certifications });
+      setFormData({ ...defaultProfile, ...result.data, skills: formData.skills, interests: formData.interests, preferredDomains: formData.preferredDomains, projects: formData.projects, certifications: formData.certifications });
       
-      // Invalidate relevant queries so the user sees fresh recommendations and skill gap analysis
       await queryClient.invalidateQueries({ queryKey: ['recommendations'] });
-      await queryClient.invalidateQueries({ queryKey: ['recommendations-ai'] });
       await queryClient.invalidateQueries({ queryKey: ['assessment-data'] });
-      await queryClient.invalidateQueries({ queryKey: ['assessment-ai'] });
+      await queryClient.invalidateQueries({ queryKey: ['roadmap'] });
+      await queryClient.invalidateQueries({ queryKey: ['roadmapProgress'] });
 
       setIsEditing(false)
-      setSuccess('Profile updated successfully!')
-      router.invalidate() // Triggers the _authenticated loader to refetch the profile
-      setTimeout(() => setSuccess(''), 3000)
+      toast.success('Profile updated successfully!')
+      router.invalidate() 
     } catch (err) {
-      setError('An error occurred while saving.')
+      toast.error('An error occurred while saving.')
     } finally {
       setIsSaving(false)
     }
   }
 
-  const renderSkills = (skills: string[] | string) => {
-    const arr = Array.isArray(skills) ? skills : []
-    if (arr.length === 0) return <p className="text-xs text-gray-400 italic">No skills added yet.</p>
-    return arr.map(s => (
-      <span key={s} className="px-3 py-1 bg-gray-50 border border-[#bccac0]/20 rounded-lg text-xs font-medium">{s}</span>
-    ))
+  const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true)
+    try {
+      const formDataUpload = new FormData();
+      formDataUpload.append("resume", file);
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000/api"}/profile/resume`, {
+        method: "POST",
+        credentials: "include",
+        body: formDataUpload,
+      });
+
+      const result = await response.json();
+      if (!result.success) throw new Error(result.message || "Failed to parse resume");
+
+      const { extractedSkills, suggestedSkills, userType, yearsOfExperience, university, degree, currentJobTitle, companyName } = result.data;
+
+      const newSkills = Array.from(new Set([...formData.skills, ...extractedSkills]));
+      
+      setFormData(prev => ({
+        ...prev,
+        skills: newSkills,
+        userType: userType === 'Working Professional' ? 'Working Professional' : prev.userType,
+        yearsOfExperience: yearsOfExperience ? String(yearsOfExperience) : prev.yearsOfExperience,
+        university: university || prev.university,
+        degree: degree || prev.degree,
+        currentJobTitle: currentJobTitle || prev.currentJobTitle,
+        companyName: companyName || prev.companyName
+      }))
+
+      toast.success("Resume parsed successfully!", {
+        description: `Found ${extractedSkills.length} skills. Suggested ${suggestedSkills.length} skills to add.`
+      });
+
+      if (suggestedSkills.length > 0) {
+        toast("Suggested Skills", {
+           description: suggestedSkills.join(", "),
+           action: {
+             label: "Add All",
+             onClick: () => setFormData(prev => ({ ...prev, skills: Array.from(new Set([...prev.skills, ...suggestedSkills])) }))
+           }
+        })
+      }
+
+    } catch (error) {
+      toast.error("Resume parsing failed", { description: error instanceof Error ? error.message : "Unknown error" })
+    } finally {
+      setIsUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   }
 
-  const renderInterests = (interests: string[] | string) => {
-    const arr = Array.isArray(interests) ? interests : []
-    if (arr.length === 0) return <p className="text-xs text-gray-400 italic">No interests added yet.</p>
-    return arr.map(s => (
-      <span key={s} className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-xs font-medium">{s}</span>
-    ))
+  // --- Modals Handlers ---
+  const saveProject = () => {
+    if (!editingProject?.name) return;
+    setFormData(prev => ({
+      ...prev,
+      projects: prev.projects.some(p => p.id === editingProject.id)
+        ? prev.projects.map(p => p.id === editingProject.id ? editingProject : p)
+        : [...prev.projects, editingProject]
+    }))
+    setProjectModalOpen(false)
   }
+
+  const openAddProject = () => {
+    setEditingProject({ id: Date.now().toString(), name: '', description: '', technologies: '', githubUrl: '' })
+    setProjectModalOpen(true)
+  }
+
+  const openEditProject = (proj: Project) => {
+    setEditingProject({...proj})
+    setProjectModalOpen(true)
+  }
+
+  const removeProject = (id: string) => {
+    setFormData(prev => ({ ...prev, projects: prev.projects.filter(p => p.id !== id) }))
+  }
+
+  const saveCert = () => {
+    if (!editingCert?.name) return;
+    setFormData(prev => ({
+      ...prev,
+      certifications: prev.certifications.some(c => c.id === editingCert.id)
+        ? prev.certifications.map(c => c.id === editingCert.id ? editingCert : c)
+        : [...prev.certifications, editingCert]
+    }))
+    setCertModalOpen(false)
+  }
+
+  const openAddCert = () => {
+    setEditingCert({ id: Date.now().toString(), name: '', issuer: '', year: '', credentialUrl: '' })
+    setCertModalOpen(true)
+  }
+
+  const openEditCert = (cert: Certification) => {
+    setEditingCert({...cert})
+    setCertModalOpen(true)
+  }
+
+  const removeCert = (id: string) => {
+    setFormData(prev => ({ ...prev, certifications: prev.certifications.filter(c => c.id !== id) }))
+  }
+
+
 
   if (isLoading) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center min-h-[50vh]">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#00a878]"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
         </div>
       </DashboardLayout>
     )
@@ -165,268 +314,616 @@ setFormData({
 
   return (
     <DashboardLayout>
-      <style>{`
-        .text-brand-green { color: #00a878; }
-        .bg-brand-green { background-color: #00a878; }
-        .bg-brand-green-light { background-color: rgba(0,168,120,0.1); }
-        .border-brand-green { border-color: #00a878; }
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-      `}</style>
-      
-      {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm font-medium">
-          {error}
+      <div className="flex flex-col gap-6 w-full max-w-full min-w-0 pb-12">
+        
+        {/* Header Section */}
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
+              <User className="w-8 h-8 text-primary" />
+              My Profile
+            </h1>
+            <p className="text-muted-foreground mt-1 text-lg">Manage your personal and professional identity.</p>
+          </div>
+          {!isEditing ? (
+            <Button size="lg" className="shadow-md hover:shadow-lg transition-all" onClick={() => setIsEditing(true)}>
+              <FileText className="w-4 h-4 mr-2" /> Edit Profile
+            </Button>
+          ) : (
+            <div className="flex items-center gap-3">
+              <Button variant="outline" size="lg" onClick={() => { setIsEditing(false); setFormData(profile); }}>Cancel</Button>
+              <Button size="lg" className="bg-emerald-500 hover:bg-emerald-600 text-white" onClick={handleSave} disabled={isSaving}>
+                {isSaving ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          )}
         </div>
-      )}
-      {success && (
-        <div className="mb-4 p-4 bg-green-50 border border-green-200 text-green-700 rounded-xl text-sm font-medium">
-          {success}
-        </div>
-      )}
 
-      <div className="flex flex-col xl:flex-row gap-8 w-full max-w-full min-w-0">
-        <div className="flex-1 min-w-0 space-y-6">
-          <div className="flex items-center justify-between relative z-10">
-            <div>
-              <h1 className="text-2xl font-bold">My Profile</h1>
-              <p className="text-[#50606f] text-sm">Manage your personal information and track your progress.</p>
-            </div>
-            {!isEditing ? (
-              <button onClick={() => setIsEditing(true)} className="flex items-center gap-2 px-4 py-2 border border-brand-green text-brand-green rounded-lg hover:bg-brand-green-light transition-colors font-medium">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg>
-                Edit Profile
-              </button>
-            ) : (
-              <div className="flex items-center gap-3">
-                <button onClick={() => { setIsEditing(false); setFormData(profile); setError(''); }} className="px-4 py-2 text-gray-500 hover:text-gray-700 font-medium text-sm">
-                  Cancel
-                </button>
-                <button onClick={handleSave} disabled={isSaving} className="flex items-center gap-2 px-6 py-2 bg-brand-green text-white rounded-lg hover:bg-emerald-600 transition-colors font-medium disabled:opacity-50">
-                  {isSaving ? 'Saving...' : 'Save Changes'}
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div className="bg-white p-6 rounded-2xl shadow-[0px_4px_20px_rgba(0,0,0,0.04)] flex flex-wrap gap-6 md:gap-10">
-            <div className="relative">
-              <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-gray-200 flex items-center justify-center border-4 border-gray-50"><svg className="w-16 h-16 md:w-20 md:h-20 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"></path></svg></div>
-              <button className="absolute bottom-1 right-1 w-8 h-8 bg-brand-green text-white rounded-full flex items-center justify-center border-2 border-white"><svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 15.5c1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3 1.34 3 3 3z"></path><path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"></path></svg></button>
-            </div>
-            <div className="flex-1 space-y-4">
-              <div className="flex items-center gap-3">
-                {isEditing ? (
-                  <input type="text" value={formData.name || ''} onChange={e => setFormData({...formData, name: e.target.value})} className="text-xl md:text-2xl font-bold border-b border-gray-300 focus:border-brand-green outline-none bg-transparent w-full" placeholder="Your Name" />
-                ) : (
-                  <h2 className="text-xl md:text-2xl font-bold truncate max-w-[200px]">{profile.name || userName}</h2>
-                )}
-                <span className="px-3 py-0.5 bg-green-100 text-green-600 rounded-full text-xs font-semibold shrink-0">Student</span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-8 text-sm text-[#50606f]">
-                <div className="flex items-center gap-2 truncate" title={userEmail}>
-                  <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg>
-                  <span className="truncate min-w-0">{userEmail}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg>
-                  {isEditing ? (
-                    <input type="text" value={formData.phone || ''} onChange={e => setFormData({...formData, phone: e.target.value})} placeholder="+91 98765 43210" className="border-b border-gray-300 focus:border-brand-green outline-none w-full bg-transparent px-1" />
-                  ) : (
-                    profile.phone || <span className="text-gray-400 italic">Not provided</span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
-                  {isEditing ? (
-                    <input type="text" value={formData.linkedin || ''} onChange={e => setFormData({...formData, linkedin: e.target.value})} placeholder="LinkedIn URL" className="border-b border-gray-300 focus:border-brand-green outline-none w-full bg-transparent px-1" />
-                  ) : (
-                    profile.linkedin ? <a href={profile.linkedin} target="_blank" rel="noreferrer" className="text-blue-500 hover:underline">LinkedIn</a> : <span className="text-gray-400 italic">LinkedIn Not linked</span>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 24 24"><path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.161 22 16.418 22 12c0-5.523-4.477-10-10-10z"></path></svg>
-                  {isEditing ? (
-                    <input type="text" value={formData.github || ''} onChange={e => setFormData({...formData, github: e.target.value})} placeholder="GitHub URL" className="border-b border-gray-300 focus:border-brand-green outline-none w-full bg-transparent px-1" />
-                  ) : (
-                    profile.github ? <a href={profile.github} target="_blank" rel="noreferrer" className="text-gray-700 hover:underline">GitHub</a> : <span className="text-gray-400 italic">GitHub Not linked</span>
-                  )}
-                </div>
-              </div>
-            </div>
-            <div className="hidden md:flex gap-8 border-l border-[#bccac0]/20 pl-10">
-              <div className="text-center">
-                <p className="text-xs text-[#50606f] font-medium mb-1">Profile Completion</p>
-                <p className="text-xl font-bold text-brand-green">{completionPercentage}%</p>
-                <div className="w-16 h-1.5 bg-gray-100 rounded-full mt-2">
-                  <div className="h-full bg-brand-green rounded-full" style={{ width: `${completionPercentage}%` }}></div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-b border-gray-200">
-            <nav className="flex gap-6 md:gap-8 overflow-x-auto pb-px scrollbar-hide">
-              <a className="px-1 py-3 border-b-2 border-brand-green text-brand-green font-medium text-sm whitespace-nowrap" href="#">Overview</a>
-            </nav>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="bg-white p-6 rounded-2xl border border-[#bccac0]/20 shadow-sm flex flex-col">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="bg-blue-50 p-1.5 rounded-lg text-blue-500">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg>
-                </div>
-                <h3 className="font-bold">About Me</h3>
-              </div>
-              {isEditing ? (
-                <textarea 
-                  className="w-full flex-1 p-3 border border-gray-200 rounded-xl focus:border-brand-green outline-none text-sm resize-none min-h-[100px]"
-                  placeholder="Tell us about yourself..."
-                  value={formData.bio || ''}
-                  onChange={e => setFormData({...formData, bio: e.target.value})}
-                ></textarea>
-              ) : (
-                <p className="text-sm text-[#3d4a42] leading-relaxed whitespace-pre-wrap">
-                  {profile.bio || <span className="text-gray-400 italic">No bio provided.</span>}
-                </p>
-              )}
-            </div>
-
-            <div className="bg-white p-6 rounded-2xl border border-[#bccac0]/20 shadow-sm flex flex-col">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="bg-emerald-50 p-1.5 rounded-lg text-brand-green">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg>
-                  </div>
-                  <h3 className="font-bold">Skills</h3>
-                </div>
-              </div>
-              {isEditing ? (
-                <div>
-                  <p className="text-xs text-gray-500 mb-2">Enter skills separated by commas</p>
-                  <textarea 
-                    className="w-full p-3 border border-gray-200 rounded-xl focus:border-brand-green outline-none text-sm resize-none"
-                    placeholder="Python, Java, React..."
-                    value={Array.isArray(formData.skills) ? formData.skills.join(', ') : formData.skills}
-                    onChange={e => setFormData({...formData, skills: e.target.value})}
-                  ></textarea>
-                </div>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {renderSkills(profile.skills)}
-                </div>
-              )}
-            </div>
-
-            <div className="bg-white p-6 rounded-2xl border border-[#bccac0]/20 shadow-sm flex flex-col">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="bg-purple-50 p-1.5 rounded-lg text-purple-500">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg>
-                </div>
-                <h3 className="font-bold">Interests</h3>
-              </div>
-              {isEditing ? (
-                <div>
-                  <p className="text-xs text-gray-500 mb-2">Enter interests separated by commas</p>
-                  <textarea 
-                    className="w-full p-3 border border-gray-200 rounded-xl focus:border-brand-green outline-none text-sm resize-none"
-                    placeholder="Web Development, Data Science..."
-                    value={Array.isArray(formData.interests) ? formData.interests.join(', ') : formData.interests}
-                    onChange={e => setFormData({...formData, interests: e.target.value})}
-                  ></textarea>
-                </div>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {renderInterests(profile.interests)}
-                </div>
-              )}
-            </div>
-
-            <div className="bg-white p-6 rounded-2xl border border-[#bccac0]/20 shadow-sm flex flex-col">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="bg-orange-50 p-1.5 rounded-lg text-orange-500">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg>
-                </div>
-                <h3 className="font-bold">Career Goal <span className="text-red-500">*</span></h3>
-              </div>
-              {isEditing ? (
-                <textarea 
-                  className="w-full flex-1 p-3 border border-gray-200 rounded-xl focus:border-brand-green outline-none text-sm resize-none"
-                  placeholder="What is your primary career goal?"
-                  value={formData.careerGoal || ''}
-                  onChange={e => setFormData({...formData, careerGoal: e.target.value})}
-                ></textarea>
-              ) : (
-                <div className="flex items-start gap-3 bg-orange-50 p-4 rounded-xl border border-orange-100 h-full">
-                  <div className="mt-0.5 bg-orange-500 rounded-full p-1 shrink-0"><svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg></div>
-                  <span className="text-sm font-semibold text-[#3d4a42] break-words whitespace-pre-wrap min-w-0">{profile.careerGoal || <span className="text-gray-400 italic font-normal">No career goal set.</span>}</span>
-                </div>
-              )}
-            </div>
-
-            <div className="bg-white p-6 rounded-2xl border border-[#bccac0]/20 shadow-sm md:col-span-1 lg:col-span-2">
-              <div className="flex items-center gap-2 mb-6">
-                <div className="bg-blue-50 p-1.5 rounded-lg text-blue-500">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg>
-                </div>
-                <h3 className="font-bold">Education</h3>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className="bg-gray-50 w-14 h-14 rounded-xl flex items-center justify-center border border-gray-100 shrink-0">
-                  <svg className="w-7 h-7 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path></svg>
-                </div>
+        {/* Profile Strength Section */}
+        {!isEditing && (
+          <Card className="border-emerald-200/60 shadow-sm bg-gradient-to-r from-emerald-50 to-white">
+            <CardContent className="p-6">
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                 <div className="flex-1 space-y-3">
-                  {isEditing ? (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <label className="text-xs font-semibold text-gray-600 mb-1 block">Branch / Course <span className="text-red-500">*</span></label>
-                        <input type="text" value={formData.branch || ''} onChange={e => setFormData({...formData, branch: e.target.value})} placeholder="e.g. Computer Science" className="w-full p-2.5 border border-gray-200 rounded-lg focus:border-brand-green outline-none text-sm" />
-                      </div>
-                      <div>
-                        <label className="text-xs font-semibold text-gray-600 mb-1 block">Graduation Year <span className="text-red-500">*</span></label>
-                        <input type="text" value={formData.year || ''} onChange={e => setFormData({...formData, year: e.target.value})} placeholder="e.g. 2026" className="w-full p-2.5 border border-gray-200 rounded-lg focus:border-brand-green outline-none text-sm" />
-                      </div>
-                      <div>
-                        <label className="text-xs font-semibold text-gray-600 mb-1 block">CGPA</label>
-                        <input type="text" value={formData.cgpa || ''} onChange={e => setFormData({...formData, cgpa: e.target.value})} placeholder="e.g. 8.5" className="w-full p-2.5 border border-gray-200 rounded-lg focus:border-brand-green outline-none text-sm" />
-                      </div>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-emerald-100 rounded-lg text-emerald-600"><Award className="w-5 h-5"/></div>
+                    <h3 className="text-lg font-bold text-slate-800">Profile Strength</h3>
+                    <Badge variant="outline" className={completionPercentage === 100 ? "text-emerald-600 border-emerald-200 bg-emerald-50" : "text-amber-600 border-amber-200 bg-amber-50"}>{completionPercentage}% Complete</Badge>
+                  </div>
+                  <div className="h-2 w-full max-w-md bg-slate-200 rounded-full overflow-hidden">
+                    <div className="h-full bg-emerald-500 rounded-full transition-all duration-1000 ease-out" style={{ width: `${completionPercentage}%` }} />
+                  </div>
+                  {missingSections.length > 0 ? (
+                    <div className="text-sm text-slate-600">
+                      <p className="font-semibold mb-2 text-slate-700">Missing:</p>
+                      <ul className="space-y-1 mb-3">
+                        {missingSections.map((section, idx) => (
+                          <li key={idx} className="flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                            {section}
+                          </li>
+                        ))}
+                      </ul>
+                      <p>
+                        <span className="text-emerald-600 font-medium cursor-pointer hover:underline" onClick={() => setIsEditing(true)}>Edit profile</span> to add these details and improve your AI Career Guidance match rates.
+                      </p>
                     </div>
                   ) : (
-                    <>
-                      <h4 className="text-base font-bold text-gray-800">{profile.branch || <span className="text-gray-400 italic">Branch not provided</span>}</h4>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="px-2.5 py-1 bg-green-50 text-brand-green rounded-md text-xs font-bold border border-green-100">Class of {profile.year || 'Unknown'}</span>
-                        {profile.cgpa && (
-                          <span className="px-2.5 py-1 bg-blue-50 text-blue-600 rounded-md text-xs font-bold border border-blue-100">CGPA: {profile.cgpa}</span>
-                        )}
-                      </div>
-                    </>
+                    <p className="text-sm text-emerald-700 font-medium">Your profile is fully complete! The AI has maximum context to provide tailored guidance.</p>
                   )}
                 </div>
               </div>
-            </div>
+            </CardContent>
+          </Card>
+        )}
 
-          </div>
-        </div>
-        
-        <aside className="w-full xl:w-72 space-y-6 shrink-0">
-          <div className="bg-white p-6 rounded-2xl border border-[#bccac0]/20 shadow-sm text-center">
-            <h3 className="font-bold text-sm mb-4">Profile Completion</h3>
-            <div className="relative w-32 h-32 mx-auto mb-4">
-              <svg className="w-full h-full transform -rotate-90">
-                <circle className="text-gray-100" cx="64" cy="64" fill="transparent" r="56" stroke="currentColor" strokeWidth="8"></circle>
-                <circle className="text-brand-green" cx="64" cy="64" fill="transparent" r="56" stroke="currentColor" strokeDasharray="351.85" strokeDashoffset={351.85 - (351.85 * completionPercentage) / 100} strokeWidth="8"></circle>
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-2xl font-bold">{completionPercentage}%</span>
+        {/* Profile Card */}
+        <div className="flex flex-col gap-6">
+          
+          <Card className="border-slate-200/60 shadow-sm overflow-hidden">
+            <div className="h-24 bg-gradient-to-r from-emerald-600/10 via-primary/5 to-emerald-400/10 w-full" />
+            <CardContent className="p-6 pt-0 relative">
+              <div className="flex flex-col sm:flex-row gap-6 items-start sm:items-end -mt-12 mb-6">
+                <div className="w-28 h-28 rounded-full bg-background flex items-center justify-center border-4 border-background shadow-md shrink-0 ring-1 ring-slate-200">
+                  <span className="text-4xl font-bold text-emerald-500">{userName.charAt(0).toUpperCase()}</span>
+                </div>
+                <div className="flex-1 space-y-1.5 pb-2">
+                  <div className="flex items-center gap-3">
+                    {isEditing ? (
+                      <Input value={formData.name || ''} onChange={(e: any) => setFormData({...formData, name: e.target.value})} className="text-xl font-bold max-w-[300px] h-10" placeholder="Your Name" />
+                    ) : (
+                      <h2 className="text-2xl font-bold tracking-tight">{profile.name || userName}</h2>
+                    )}
+                    <Badge variant={formData.userType === 'Student' ? 'default' : 'secondary'} className="px-3 py-1 shadow-sm">
+                      {formData.userType}
+                    </Badge>
+                  </div>
+                  <div className="text-muted-foreground flex items-center gap-2">
+                    <User className="w-4 h-4" />
+                    {userEmail}
+                  </div>
+                </div>
               </div>
-            </div>
-            <p className="text-xs text-[#50606f] mb-6 px-4">Complete your profile to get better recommendations.</p>
-            <button onClick={() => { setIsEditing(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="w-full bg-brand-green text-white py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-green-100 hover:bg-emerald-600 transition-colors">Update Profile</button>
-          </div>
-        </aside>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-slate-100">
+                <div className="flex flex-col items-center justify-center p-3 rounded-lg bg-slate-50 border border-slate-100">
+                  <span className="text-2xl font-bold text-slate-700">{profile.skills.length}</span>
+                  <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider flex items-center gap-1 mt-1"><Sparkles className="w-3 h-3"/> Skills</span>
+                </div>
+                <div className="flex flex-col items-center justify-center p-3 rounded-lg bg-slate-50 border border-slate-100">
+                  <span className="text-2xl font-bold text-slate-700">{profile.interests.length}</span>
+                  <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider flex items-center gap-1 mt-1"><Target className="w-3 h-3"/> Interests</span>
+                </div>
+                <div className="flex flex-col items-center justify-center p-3 rounded-lg bg-slate-50 border border-slate-100">
+                  <span className="text-2xl font-bold text-slate-700">{profile.projects.length}</span>
+                  <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider flex items-center gap-1 mt-1"><Code className="w-3 h-3"/> Projects</span>
+                </div>
+                <div className="flex flex-col items-center justify-center p-3 rounded-lg bg-slate-50 border border-slate-100">
+                  <span className="text-2xl font-bold text-slate-700">{profile.certifications.length}</span>
+                  <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider flex items-center gap-1 mt-1"><Medal className="w-3 h-3"/> Certs</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+
+        </div>
+
+        {isEditing && (
+          <Card className="border-emerald-200 bg-emerald-50/50 shadow-sm overflow-hidden relative">
+            <div className="absolute right-0 top-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
+            <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
+              <div className="flex items-start gap-4">
+                <div className="p-3 bg-emerald-100 rounded-lg shrink-0">
+                   <Sparkles className="w-6 h-6 text-emerald-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-emerald-900 tracking-tight">Smart Resume Parsing</h3>
+                  <p className="text-emerald-700/80 mt-1 max-w-xl">Upload your latest resume to automatically extract your skills, domains, and professional experience using Gemini AI.</p>
+                </div>
+              </div>
+              <div className="shrink-0 w-full md:w-auto">
+                <input type="file" accept=".pdf,.docx" className="hidden" ref={fileInputRef} onChange={handleResumeUpload} />
+                <Button className="w-full md:w-auto bg-indigo-600 hover:bg-indigo-700 text-white shadow-md" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                  <UploadCloud className="w-4 h-4 mr-2" />
+                  {isUploading ? "Extracting..." : "Upload Resume (PDF/DOCX)"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          <Card className="shadow-sm border-slate-200/60">
+            <CardHeader className="border-b border-slate-100/50 pb-4">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <User className="w-5 h-5 text-slate-500" /> Basic Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 space-y-5">
+              {isEditing ? (
+                  <>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-semibold uppercase text-slate-500">I am a...</Label>
+                      <Select value={formData.userType} onValueChange={(v: any) => setFormData({...formData, userType: v})}>
+                        <SelectTrigger className="bg-slate-50"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Student">Student</SelectItem>
+                          <SelectItem value="Working Professional">Working Professional</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {formData.userType === 'Working Professional' && (
+                      <div className="space-y-2">
+                        <Label className="text-xs font-semibold uppercase text-slate-500">Experience Level</Label>
+                        <Select value={formData.experienceLevel} onValueChange={(v: string) => setFormData({...formData, experienceLevel: v})}>
+                          <SelectTrigger className="bg-slate-50"><SelectValue placeholder="Select level" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Beginner">Beginner (0-2 years)</SelectItem>
+                            <SelectItem value="Intermediate">Intermediate (3-5 years)</SelectItem>
+                            <SelectItem value="Advanced">Advanced (5+ years)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    <div className="space-y-2 relative">
+                      <Label className="text-xs font-semibold uppercase text-slate-500">Career Goal</Label>
+                      <Input
+                        value={formData.careerGoal}
+                        onChange={(e: any) => {
+                          setFormData({...formData, careerGoal: e.target.value});
+                          setCareerGoalOpen(true);
+                        }}
+                        onFocus={() => setCareerGoalOpen(true)}
+                        onBlur={() => setTimeout(() => setCareerGoalOpen(false), 150)}
+                        placeholder="e.g. AI Product Engineer"
+                        className="bg-slate-50"
+                      />
+                      {careerGoalOpen && formData.careerGoal && CAREER_GOALS.filter(g => g.toLowerCase().includes(formData.careerGoal.toLowerCase()) && g.toLowerCase() !== formData.careerGoal.toLowerCase()).length > 0 && (
+                        <div className="absolute top-full left-0 mt-1 w-full bg-white border border-slate-200 shadow-lg rounded-md z-50 max-h-48 overflow-y-auto">
+                          {CAREER_GOALS.filter(g => g.toLowerCase().includes(formData.careerGoal.toLowerCase()) && g.toLowerCase() !== formData.careerGoal.toLowerCase()).map(goal => (
+                            <div 
+                              key={goal}
+                              className="px-3 py-2 text-sm cursor-pointer hover:bg-slate-100 transition-colors text-slate-700"
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                setFormData({...formData, careerGoal: goal});
+                                setCareerGoalOpen(false);
+                              }}
+                            >
+                              {goal}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </>
+              ) : (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">User Type</p>
+                      <Badge variant="outline" className="bg-slate-50">{profile.userType}</Badge>
+                    </div>
+                    {profile.userType === 'Working Professional' && (
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Experience Level</p>
+                        <Badge variant="outline" className="bg-slate-50">{profile.experienceLevel || 'Not specified'}</Badge>
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Primary Career Goal</p>
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-indigo-50 border border-indigo-100 text-indigo-700 font-medium">
+                      <Target className="w-4 h-4" />
+                      {profile.careerGoal || 'Not specified'}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="shadow-sm border-slate-200/60">
+            <CardHeader className="border-b border-slate-100/50 pb-4">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                {formData.userType === 'Student' ? (
+                  <><GraduationCap className="w-5 h-5 text-slate-500" /> Education Details</>
+                ) : (
+                  <><Briefcase className="w-5 h-5 text-slate-500" /> Current Position</>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 space-y-5">
+              {formData.userType === 'Student' ? (
+                  isEditing ? (
+                    <>
+                      <div className="space-y-2"><Label className="text-xs font-semibold uppercase text-slate-500">University</Label><Input className="bg-slate-50" value={formData.university} onChange={(e: any) => setFormData({...formData, university: e.target.value})} placeholder="e.g. Stanford University" /></div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2"><Label className="text-xs font-semibold uppercase text-slate-500">Degree</Label><Input className="bg-slate-50" value={formData.degree} onChange={(e: any) => setFormData({...formData, degree: e.target.value})} placeholder="e.g. B.Tech" /></div>
+                        <div className="space-y-2"><Label className="text-xs font-semibold uppercase text-slate-500">Branch / Specialization</Label><Input className="bg-slate-50" value={formData.branch} onChange={(e: any) => setFormData({...formData, branch: e.target.value})} placeholder="e.g. Computer Science" /></div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="space-y-2"><Label className="text-xs font-semibold uppercase text-slate-500">Semester</Label><Input className="bg-slate-50" value={formData.semester} onChange={(e: any) => setFormData({...formData, semester: e.target.value})} placeholder="e.g. 6th" /></div>
+                        <div className="space-y-2"><Label className="text-xs font-semibold uppercase text-slate-500">Graduation Year</Label><Input className="bg-slate-50" value={formData.year} onChange={(e: any) => setFormData({...formData, year: e.target.value})} placeholder="2026" /></div>
+                        <div className="space-y-2"><Label className="text-xs font-semibold uppercase text-slate-500">CGPA</Label><Input className="bg-slate-50" value={formData.cgpa} onChange={(e: any) => setFormData({...formData, cgpa: e.target.value})} placeholder="8.5" /></div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="space-y-6">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">University</p>
+                        <p className="font-medium text-slate-800 text-lg">{profile.university || 'Not specified'}</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-4">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Degree & Branch</p>
+                          <p className="font-medium text-slate-800">{profile.degree ? `${profile.degree} in ${profile.branch}` : (profile.branch || 'Not specified')}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Semester</p>
+                          <Badge variant="secondary">{profile.semester || 'N/A'}</Badge>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Graduation Year</p>
+                          <Badge variant="secondary">{profile.year || 'N/A'}</Badge>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Current CGPA</p>
+                          <Badge variant="secondary">{profile.cgpa || 'N/A'}</Badge>
+                        </div>
+                      </div>
+                    </div>
+                  )
+              ) : (
+                  isEditing ? (
+                    <>
+                      <div className="space-y-2"><Label className="text-xs font-semibold uppercase text-slate-500">Current Job Title</Label><Input className="bg-slate-50" value={formData.currentJobTitle} onChange={(e: any) => setFormData({...formData, currentJobTitle: e.target.value})} placeholder="Software Engineer" /></div>
+                      <div className="space-y-2"><Label className="text-xs font-semibold uppercase text-slate-500">Company Name</Label><Input className="bg-slate-50" value={formData.companyName} onChange={(e: any) => setFormData({...formData, companyName: e.target.value})} placeholder="Google" /></div>
+                      <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2"><Label className="text-xs font-semibold uppercase text-slate-500">Years of Experience</Label><Input className="bg-slate-50" value={formData.yearsOfExperience} onChange={(e: any) => setFormData({...formData, yearsOfExperience: e.target.value})} type="number" placeholder="3" /></div>
+                          <div className="space-y-2"><Label className="text-xs font-semibold uppercase text-slate-500">Current Salary</Label><Input className="bg-slate-50" value={formData.currentSalary} onChange={(e: any) => setFormData({...formData, currentSalary: e.target.value})} placeholder="₹15,00,000" /></div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="space-y-6">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Job Title</p>
+                        <p className="font-medium text-slate-800 text-lg">{profile.currentJobTitle || 'Not specified'}</p>
+                        {profile.companyName && <p className="text-slate-500 mt-0.5">at <span className="font-medium text-slate-700">{profile.companyName}</span></p>}
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-4">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Experience</p>
+                          <Badge variant="secondary">{profile.yearsOfExperience ? `${profile.yearsOfExperience} Years` : 'Not specified'}</Badge>
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">Salary</p>
+                          <Badge variant="secondary">{profile.currentSalary || 'Confidential'}</Badge>
+                        </div>
+                      </div>
+                    </div>
+                  )
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="lg:col-span-2 shadow-sm border-slate-200/60">
+            <CardHeader className="border-b border-slate-100/50 pb-4">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Sparkles className="w-5 h-5 text-amber-500" /> Core Competencies
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+              
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-bold text-slate-700 flex items-center gap-2"><Code className="w-4 h-4 text-emerald-500" /> Technical Skills</Label>
+                  {!isEditing && <Badge variant="outline" className="bg-slate-50">{profile.skills.length}</Badge>}
+                </div>
+                {isEditing ? (
+                  <ChipInput 
+                    value={formData.skills} 
+                    onChange={skills => setFormData({...formData, skills})} 
+                    placeholder="Type a skill and press Enter..." 
+                    badgeClassName="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-transparent font-medium" 
+                    className="ring-emerald-500/20"
+                    suggestions={["React", "Node.js", "Python", "TypeScript", "JavaScript", "Java", "C++", "SQL", "MongoDB", "AWS", "Docker", "Git", "Kubernetes", "Next.js", "GraphQL", "Machine Learning"]}
+                  />
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {profile.skills.length > 0 ? profile.skills.map(s => (
+                      <Badge key={s} className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200/50 shadow-sm">{s}</Badge>
+                    )) : <span className="text-muted-foreground text-sm italic">No skills listed</span>}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-bold text-slate-700 flex items-center gap-2"><Target className="w-4 h-4 text-emerald-500" /> Professional Interests</Label>
+                  {!isEditing && <Badge variant="outline" className="bg-slate-50">{profile.interests.length}</Badge>}
+                </div>
+                {isEditing ? (
+                  <ChipInput 
+                    value={formData.interests} 
+                    onChange={interests => setFormData({...formData, interests})} 
+                    placeholder="Type an interest and press Enter..." 
+                    badgeClassName="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border-transparent font-medium" 
+                    className="ring-emerald-500/20" 
+                    suggestions={["Machine Learning", "Open Source", "Generative AI", "Web3", "Cloud Native", "Fintech", "Healthtech", "E-commerce", "SaaS", "Cybersecurity"]}
+                  />
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {profile.interests.length > 0 ? profile.interests.map(s => (
+                      <Badge key={s} className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-200/50 shadow-sm">{s}</Badge>
+                    )) : <span className="text-muted-foreground text-sm italic">No interests listed</span>}
+                  </div>
+                )}
+              </div>
+
+
+
+            </CardContent>
+          </Card>
+
+          <Card className="lg:col-span-2 shadow-sm border-slate-200/60">
+            <CardHeader className="border-b border-slate-100/50 pb-4 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-lg"><Code className="w-5 h-5 text-slate-500" /> Portfolio Projects</CardTitle>
+                <CardDescription className="mt-1">Showcase your hands-on experience and code</CardDescription>
+              </div>
+              {isEditing && (
+                <Button variant="outline" size="sm" onClick={openAddProject} className="shrink-0"><Plus className="w-4 h-4 mr-2" /> Add Project</Button>
+              )}
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              {isEditing ? (
+                formData.projects.length === 0 ? (
+                    <div className="text-center p-8 border border-dashed border-slate-300 rounded-xl text-slate-500 bg-slate-50/50">
+                      No projects added yet. Click 'Add Project' to showcase your work.
+                    </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {formData.projects.map((proj, idx) => (
+                      <div key={proj.id} className="p-5 border border-slate-200 rounded-xl space-y-3 bg-white shadow-sm hover:border-emerald-500/30 transition-colors relative group">
+                        <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button variant="outline" size="sm" onClick={() => openEditProject(proj)}>Edit</Button>
+                          <Button variant="ghost" size="icon" className="text-red-500 hover:bg-red-100 hover:text-red-600 w-8 h-8 rounded-full" onClick={() => removeProject(proj.id)}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        <h4 className="font-bold text-slate-800 text-lg flex items-center gap-2 pr-20">
+                          <Code className="w-4 h-4 text-slate-400" />
+                          {proj.name || 'Untitled Project'}
+                        </h4>
+                        <p className="text-sm text-slate-600 leading-relaxed line-clamp-2">{proj.description}</p>
+                        {proj.technologies && (
+                          <div className="pt-2">
+                            <div className="flex flex-wrap gap-1.5">
+                              {proj.technologies.split(',').map(tech => (
+                                <Badge key={tech} variant="secondary" className="bg-slate-100 text-slate-700 text-xs font-medium">{tech.trim()}</Badge>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {proj.githubUrl && (
+                          <div className="pt-2 text-sm text-blue-600">
+                             {proj.githubUrl}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )
+              ) : (
+                profile.projects.length === 0 ? (
+                    <div className="text-center p-8 border border-dashed border-slate-200 rounded-xl text-slate-500 bg-slate-50/30">
+                      No projects have been added to this profile yet.
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {profile.projects.map(proj => (
+                        <div key={proj.id} className="p-5 border border-slate-200 rounded-xl space-y-3 bg-white shadow-sm hover:border-primary/30 transition-colors">
+                          <h4 className="font-bold text-slate-800 text-lg flex items-center gap-2">
+                            <Code className="w-4 h-4 text-slate-400" />
+                            {proj.name || 'Untitled Project'}
+                          </h4>
+                          <p className="text-sm text-slate-600 leading-relaxed">{proj.description}</p>
+                          {proj.technologies && (
+                            <div className="pt-3 mt-1 border-t border-slate-100">
+                              <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Tech Stack</p>
+                              <div className="flex flex-wrap gap-1.5">
+                                {proj.technologies.split(',').map(tech => (
+                                  <Badge key={tech} variant="secondary" className="bg-slate-100 text-slate-700 text-xs font-medium hover:bg-slate-200">{tech.trim()}</Badge>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {proj.githubUrl && (
+                             <a href={proj.githubUrl} target="_blank" className="text-sm text-blue-600 hover:underline inline-flex items-center gap-1 mt-2">
+                               <LinkIcon className="w-3 h-3" /> View Code
+                             </a>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                )
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="lg:col-span-2 shadow-sm border-slate-200/60">
+            <CardHeader className="border-b border-slate-100/50 pb-4 flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-lg"><Medal className="w-5 h-5 text-slate-500" /> Certifications</CardTitle>
+                <CardDescription className="mt-1">Add professional credentials to boost your profile</CardDescription>
+              </div>
+              {isEditing && (
+                <Button variant="outline" size="sm" onClick={openAddCert} className="shrink-0"><Plus className="w-4 h-4 mr-2" /> Add Cert</Button>
+              )}
+            </CardHeader>
+            <CardContent className="p-6 space-y-4">
+              {isEditing ? (
+                formData.certifications.length === 0 ? (
+                    <div className="text-center p-8 border border-dashed border-slate-300 rounded-xl text-slate-500 bg-slate-50/50">
+                      No certifications added yet. Click 'Add Cert' to add one.
+                    </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {formData.certifications.map((cert, idx) => (
+                      <div key={cert.id} className="p-5 border border-slate-200 rounded-xl space-y-3 bg-white shadow-sm flex items-start gap-4 group relative">
+                        <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button variant="outline" size="sm" onClick={() => openEditCert(cert)}>Edit</Button>
+                          <Button variant="ghost" size="icon" className="text-red-500 hover:bg-red-100 hover:text-red-600 w-8 h-8 rounded-full" onClick={() => removeCert(cert.id)}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        <div className="p-2.5 bg-slate-100 rounded-lg text-slate-500 shrink-0"><Medal className="w-5 h-5"/></div>
+                        <div className="pr-20">
+                          <h4 className="font-bold text-slate-800">{cert.name || 'Untitled Certification'}</h4>
+                          <p className="text-sm text-slate-600 mt-0.5">{cert.issuer}</p>
+                          {cert.year && <Badge variant="outline" className="mt-2">{cert.year}</Badge>}
+                          {cert.credentialUrl && <a href={cert.credentialUrl} target="_blank" className="block text-sm text-blue-600 mt-1 hover:underline truncate">View Credential</a>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )
+              ) : (
+                profile.certifications.length === 0 ? (
+                    <div className="text-center p-8 border border-dashed border-slate-200 rounded-xl text-slate-500 bg-slate-50/30">
+                      No certifications have been added to this profile yet.
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {profile.certifications.map(cert => (
+                        <div key={cert.id} className="p-5 border border-slate-200 rounded-xl space-y-3 bg-white shadow-sm flex items-start gap-4">
+                          <div className="p-2.5 bg-slate-100 rounded-lg text-slate-500"><Medal className="w-5 h-5"/></div>
+                          <div>
+                            <h4 className="font-bold text-slate-800">{cert.name || 'Untitled Certification'}</h4>
+                            <p className="text-sm text-slate-600 mt-0.5">{cert.issuer}</p>
+                            {cert.year && <Badge variant="outline" className="mt-2">{cert.year}</Badge>}
+                            {cert.credentialUrl && <a href={cert.credentialUrl} target="_blank" className="block text-sm text-blue-600 mt-1 hover:underline truncate">View Credential</a>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                )
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="lg:col-span-2 shadow-sm border-slate-200/60">
+            <CardHeader className="border-b border-slate-100/50 pb-4">
+              <CardTitle className="flex items-center gap-2 text-lg"><LinkIcon className="w-5 h-5 text-slate-500" /> Coding Profiles & Links</CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="space-y-2 lg:col-span-2">
+                <Label className="text-xs font-semibold uppercase text-slate-500">LinkedIn Profile</Label>
+                {isEditing ? <Input className="bg-slate-50" value={formData.linkedin} onChange={(e: any) => setFormData({...formData, linkedin: e.target.value})} placeholder="https://linkedin.com/in/..." /> : <p className="text-sm">{profile.linkedin ? <a href={profile.linkedin} target="_blank" className="text-blue-600 hover:text-blue-800 hover:underline font-medium break-all">{profile.linkedin}</a> : <span className="text-slate-400 italic">Not added</span>}</p>}
+              </div>
+              <div className="space-y-2 lg:col-span-2">
+                <Label className="text-xs font-semibold uppercase text-slate-500">GitHub Profile</Label>
+                {isEditing ? <Input className="bg-slate-50" value={formData.github} onChange={(e: any) => setFormData({...formData, github: e.target.value})} placeholder="https://github.com/..." /> : <p className="text-sm">{profile.github ? <a href={profile.github} target="_blank" className="text-slate-700 hover:text-slate-900 hover:underline font-medium break-all">{profile.github}</a> : <span className="text-slate-400 italic">Not added</span>}</p>}
+              </div>
+              <div className="space-y-2 lg:col-span-2">
+                <Label className="text-xs font-semibold uppercase text-slate-500">LeetCode Profile</Label>
+                {isEditing ? <Input className="bg-slate-50" value={formData.leetCode} onChange={(e: any) => setFormData({...formData, leetCode: e.target.value})} placeholder="https://leetcode.com/..." /> : <p className="text-sm">{profile.leetCode ? <a href={profile.leetCode} target="_blank" className="text-amber-600 hover:text-amber-800 hover:underline font-medium break-all">{profile.leetCode}</a> : <span className="text-slate-400 italic">Not added</span>}</p>}
+              </div>
+              <div className="space-y-2 lg:col-span-2">
+                <Label className="text-xs font-semibold uppercase text-slate-500">Phone Number</Label>
+                {isEditing ? <Input className="bg-slate-50" value={formData.phone} onChange={(e: any) => setFormData({...formData, phone: e.target.value})} placeholder="+91..." /> : <p className="text-sm font-medium text-slate-700">{profile.phone || <span className="text-slate-400 italic font-normal">Not added</span>}</p>}
+              </div>
+            </CardContent>
+          </Card>
+
+        </div>
       </div>
+
+      <Dialog open={projectModalOpen} onOpenChange={setProjectModalOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>{editingProject?.id && formData.projects.some(p => p.id === editingProject.id) ? 'Edit Project' : 'Add Project'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Project Name</Label>
+              <Input value={editingProject?.name || ''} onChange={e => setEditingProject(prev => prev ? {...prev, name: e.target.value} : null)} placeholder="e.g. E-Commerce Backend" />
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Input value={editingProject?.description || ''} onChange={e => setEditingProject(prev => prev ? {...prev, description: e.target.value} : null)} placeholder="Built a scalable microservices architecture..." />
+            </div>
+            <div className="space-y-2">
+              <Label>Technologies Used</Label>
+              <Input value={editingProject?.technologies || ''} onChange={e => setEditingProject(prev => prev ? {...prev, technologies: e.target.value} : null)} placeholder="Node.js, Docker, MongoDB" />
+            </div>
+            <div className="space-y-2">
+              <Label>GitHub URL</Label>
+              <Input value={editingProject?.githubUrl || ''} onChange={e => setEditingProject(prev => prev ? {...prev, githubUrl: e.target.value} : null)} placeholder="https://github.com/..." />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setProjectModalOpen(false)}>Cancel</Button>
+            <Button onClick={saveProject} disabled={!editingProject?.name}>Save Project</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={certModalOpen} onOpenChange={setCertModalOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>{editingCert?.id && formData.certifications.some(c => c.id === editingCert.id) ? 'Edit Certification' : 'Add Certification'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Certification Name</Label>
+              <Input value={editingCert?.name || ''} onChange={e => setEditingCert(prev => prev ? {...prev, name: e.target.value} : null)} placeholder="AWS Solutions Architect" />
+            </div>
+            <div className="space-y-2">
+              <Label>Issuer / Organization</Label>
+              <Input value={editingCert?.issuer || ''} onChange={e => setEditingCert(prev => prev ? {...prev, issuer: e.target.value} : null)} placeholder="Amazon Web Services" />
+            </div>
+            <div className="space-y-2">
+              <Label>Year</Label>
+              <Input value={editingCert?.year || ''} onChange={e => setEditingCert(prev => prev ? {...prev, year: e.target.value} : null)} placeholder="2025" />
+            </div>
+            <div className="space-y-2">
+              <Label>Credential URL</Label>
+              <Input value={editingCert?.credentialUrl || ''} onChange={e => setEditingCert(prev => prev ? {...prev, credentialUrl: e.target.value} : null)} placeholder="https://www.credly.com/..." />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCertModalOpen(false)}>Cancel</Button>
+            <Button onClick={saveCert} disabled={!editingCert?.name}>Save Certification</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
     </DashboardLayout>
   )
 }

@@ -1,158 +1,221 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { useState, useEffect } from 'react'
+import { createFileRoute, useRouteContext } from '@tanstack/react-router'
+import { useQuery } from '@tanstack/react-query'
 import { DashboardLayout } from '../../../components/layout/DashboardLayout'
+import { useState, useMemo } from 'react'
 
 export const Route = createFileRoute('/_authenticated/resources/')({
   component: ResourcesPage,
 })
 
-const MOCK_RESOURCES_DATA = {
-  header: {
-    targetCareer: 'Software Engineer',
-    focusAreas: ['React', 'Git & GitHub', 'System Design', 'DSA'],
-    totalRecommended: 24,
-    weeklyGoal: '8 hrs / week'
-  },
-  courses: [
-    {
-      id: 1,
-      title: 'React for Beginners - Build Real World Projects',
-      provider: 'Udemy',
-      rating: 4.8,
-      reviews: '12.4K',
-      level: 'Beginner',
-      duration: '12 hours',
-      language: 'English',
-      iconType: 'react',
-      iconBg: '#20232a',
-    },
-    {
-      id: 2,
-      title: 'Complete Git & GitHub Bootcamp',
-      provider: 'Coursera',
-      rating: 4.7,
-      reviews: '8.9K',
-      level: 'Beginner',
-      duration: '6 hours',
-      language: 'English',
-      iconType: 'git',
-      iconBg: '#F05340',
-    }
-  ],
-  certifications: [
-    {
-      id: 1,
-      title: 'Google IT Support Professional Certificate',
-      provider: 'Coursera',
-      rating: 4.8,
-      reviews: '22K',
-      level: 'Beginner',
-      duration: '3-6 months',
-      img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAaP9RzZu8XpiKFQlsqPnYi3jy1cHBAYwAzZkMAz2f4N8ADR3LRn8eeKxpANCiWvBr9lxasZ5pCswbTCgcx_OB0tZHj9pWOVJ6vriz7ZN5ICDXBEX0jYbMgr2YcBYZIQuUirPKWLDDqXgbDxKeqQS9cOa__-37WNKMQ3hpI-ytzljGX_OB_mP-I2zHkHhmcPqBNID3TUTzJClcacPbgvSxalmOv7zlqKTz1wJi2pPtKXDs4_G7HdHfzlisoaB4CJJq3tyAt3EzL7VA'
-    },
-    {
-      id: 2,
-      title: 'AWS Cloud Practitioner Essentials',
-      provider: 'AWS Training',
-      rating: 4.7,
-      reviews: '18K',
-      level: 'Beginner',
-      duration: '2-3 months',
-      type: 'text',
-      text: 'AWS',
-      bg: '#232F3E',
-    },
-    {
-      id: 3,
-      title: 'Microsoft Azure Fundamentals (AZ-900)',
-      provider: 'Microsoft Learn',
-      rating: 4.6,
-      reviews: '9K',
-      level: 'Beginner',
-      duration: '6-8 weeks',
-      type: 'icon',
-      bg: '#00A4EF',
-    }
-  ],
-  categories: {
-    studyMaterials: [
-      { name: 'PDF Notes', icon: 'picture_as_pdf' },
-      { name: 'E-books', icon: 'menu_book' },
-      { name: 'Practice Sheets', icon: 'assignment' },
-      { name: 'Interview Questions', icon: 'quiz' }
-    ],
-    practicePlatforms: [
-      { name: 'LeetCode', icon: 'code' },
-      { name: 'GeeksforGeeks', icon: 'terminal' },
-      { name: 'HackerRank', icon: 'developer_board' },
-      { name: 'CodeChef', icon: 'bug_report' }
-    ],
-    videoPlatforms: [
-      { name: 'YouTube', icon: 'play_circle', color: 'text-red-500' },
-      { name: 'NPTEL', icon: 'school', color: 'text-blue-500' },
-      { name: 'Coursera', icon: 'copyright', color: 'text-blue-700' },
-      { name: 'Udemy', icon: 'u_turn_right', color: 'text-purple-600' }
-    ],
-    helpfulWebsites: [
-      { name: 'MDN Web Docs', iconText: 'M', style: 'text-center' },
-      { name: 'freeCodeCamp', iconText: '(A)', style: 'text-center' },
-      { name: 'Stack Overflow', icon: 'layers', color: 'text-orange-500' },
-      { name: 'Dev.to', iconText: 'DEV', style: 'bg-slate-900 text-white px-0.5 rounded' }
-    ]
-  },
-  recommendations: [
-    { id: 1, title: 'Learn React to build modern web apps', priority: 'High Priority', color: 'bg-emerald-100 text-[#00a878]' },
-    { id: 2, title: 'Master Git & GitHub for version control', priority: 'High Priority', color: 'bg-emerald-100 text-[#00a878]' },
-    { id: 3, title: 'Practice DSA to improve problem solving', priority: 'Medium Priority', color: 'bg-amber-100 text-amber-700' },
-    { id: 4, title: 'Build 2-3 projects for your portfolio', priority: 'Medium Priority', color: 'bg-amber-100 text-amber-700' },
-    { id: 5, title: 'Learn System Design for scaling apps', priority: 'Low Priority', color: 'bg-slate-100 text-slate-600' }
-  ],
-  progress: [
-    { id: 1, title: 'React for Beginners', icon: 'code', iconColor: 'text-blue-500', percent: 70, status: '8.4 / 12 hours completed' },
-    { id: 2, title: 'Git & GitHub Bootcamp', icon: 'commit', iconColor: 'text-red-500', percent: 40, status: '2.4 / 6 hours completed' },
-    { id: 3, title: 'DSA - Problem Solving', customIcon: '</>', percent: 25, status: '5.0 / 20 hours completed' }
-  ],
-  weeklyPlan: [
-    { day: 'Mon', status: 'done', height: '100%' },
-    { day: 'Tue', status: 'done', height: '70%' },
-    { day: 'Wed', status: 'today', height: '50%' },
-    { day: 'Thu', status: 'future', height: '0%' },
-    { day: 'Fri', status: 'future', height: '0%' },
-    { day: 'Sat', status: 'future', height: '0%' },
-    { day: 'Sun', status: 'future', height: '0%' }
-  ]
+function ResourceSkeleton() {
+  return (
+    <div className="border border-slate-100 rounded-2xl p-5 bg-white animate-pulse flex flex-col h-full">
+      <div className="flex justify-between items-start mb-4">
+        <div className="w-20 h-6 bg-slate-100 rounded-lg"></div>
+      </div>
+      <div className="w-3/4 h-5 bg-slate-100 rounded-md mb-2"></div>
+      <div className="w-1/2 h-4 bg-slate-100 rounded-md mb-4 flex-grow"></div>
+      <div className="w-full h-12 bg-slate-50 rounded-xl mb-4"></div>
+      <div className="pt-4 border-t border-slate-100 flex justify-between items-center mt-auto">
+        <div className="w-16 h-4 bg-slate-100 rounded-md"></div>
+        <div className="w-16 h-4 bg-slate-100 rounded-md"></div>
+      </div>
+    </div>
+  )
+}
+
+function ResourceGroup({ title, items, icon, colorClass, defaultExpanded = true }: { title: string, items: any[], icon: string, colorClass: string, defaultExpanded?: boolean }) {
+  const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+
+  if (!items || items.length === 0) return null;
+
+  return (
+    <div className="mb-8 bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm transition-all duration-300">
+      <button 
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full p-6 flex items-center justify-between bg-white hover:bg-slate-50 transition-colors cursor-pointer group"
+      >
+        <div className="flex items-center gap-4">
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${colorClass} bg-opacity-10`}>
+            <span className={`material-symbols-outlined text-[24px] ${colorClass}`}>{icon}</span>
+          </div>
+          <div className="text-left">
+            <h3 className="text-xl font-extrabold text-slate-900 leading-none mb-1">{title}</h3>
+            <p className="text-sm font-medium text-slate-500">{items.length} resource{items.length !== 1 ? 's' : ''}</p>
+          </div>
+        </div>
+        <div className={`w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+          <span className="material-symbols-outlined">keyboard_arrow_down</span>
+        </div>
+      </button>
+
+      <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 px-6 pb-6 pt-2 transition-all duration-300 ${isExpanded ? 'block' : 'hidden'}`}>
+        {items.map((resource: any, idx: number) => {
+          let badgeColor = "text-slate-600 bg-slate-100 border-transparent";
+          if (resource.type === "Documentation") badgeColor = "text-blue-600 bg-blue-50/60 border-blue-100/50";
+          else if (resource.type === "Courses") badgeColor = "text-indigo-600 bg-indigo-50/60 border-indigo-100/50";
+          else if (resource.type === "YouTube") badgeColor = "text-red-600 bg-red-50/60 border-red-100/50";
+          else if (resource.type === "Practice Platforms") badgeColor = "text-emerald-600 bg-emerald-50/60 border-emerald-100/50";
+          else if (resource.type === "High Priority") badgeColor = "text-rose-600 bg-rose-50/60 border-rose-100/50";
+          else if (resource.type === "Books") badgeColor = "text-amber-600 bg-amber-50/60 border-amber-100/50";
+          else if (resource.type === "Certifications") badgeColor = "text-purple-600 bg-purple-50/60 border-purple-100/50";
+
+          return (
+            <div key={idx} className="border border-slate-200 rounded-[20px] bg-white hover:shadow-xl hover:-translate-y-1 hover:border-slate-300 group transition-all duration-300 flex flex-col h-full relative overflow-hidden">
+              <div className="p-6 flex-grow flex flex-col">
+                <div className="flex justify-between items-start mb-6">
+                  <span className={`px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest rounded-lg border h-7 flex items-center ${badgeColor}`}>
+                    {resource.type}
+                  </span>
+                  <div className="flex gap-2">
+                    <button className="w-9 h-9 rounded-full bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-blue-500 transition-colors tooltip-trigger" title="Bookmark Resource">
+                      <span className="material-symbols-outlined text-[18px]">bookmark_border</span>
+                    </button>
+                    <button className="w-9 h-9 rounded-full bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-[#00a878] transition-colors tooltip-trigger" title="Mark as Completed">
+                      <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                    </button>
+                  </div>
+                </div>
+                
+                <h4 className="text-[22px] font-bold text-slate-900 mb-2 leading-snug line-clamp-2">{resource.title}</h4>
+                <p className="text-sm font-medium text-slate-500 mb-6">{resource.provider}</p>
+                
+                <div className="flex items-center gap-4 mb-8">
+                   <span className="flex items-center gap-1.5 text-xs font-bold text-slate-500 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100">
+                      <span className="material-symbols-outlined text-[16px] text-slate-400">speed</span> {resource.difficulty}
+                   </span>
+                   {resource.duration && (
+                     <span className="flex items-center gap-1.5 text-xs font-bold text-slate-500 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100">
+                        <span className="material-symbols-outlined text-[16px] text-slate-400">schedule</span> {resource.duration}
+                     </span>
+                   )}
+                </div>
+                
+                <div className="bg-slate-50/50 rounded-xl p-3 mt-auto border border-slate-100/50">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="material-symbols-outlined text-[14px] text-[#00a878]">track_changes</span>
+                    <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wide">Target: {resource.skill}</span>
+                  </div>
+                  <p className="text-[12px] text-slate-600 font-medium leading-relaxed italic line-clamp-3">
+                    "{resource.description}"
+                  </p>
+                </div>
+              </div>
+              
+              <div className="px-6 pb-6 mt-auto">
+                 <a href={resource.url} target="_blank" rel="noreferrer" className="w-full bg-[#00a878] hover:bg-[#008f66] text-white h-10 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-sm shadow-emerald-500/20 active:scale-[0.98]">
+                   Open Resource <span className="material-symbols-outlined text-[16px]">arrow_outward</span>
+                 </a>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function ResourcesPage() {
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const context = useRouteContext({ strict: false }) as any;
+  const sessionUser = context?.sessionUser;
+  const profileData = context?.profile;
+  const userId = sessionUser?.id;
 
-  useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 800)
-    return () => clearTimeout(timer)
-  }, [])
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterType, setFilterType] = useState("All");
+  const [filterDifficulty, setFilterDifficulty] = useState("All");
 
-  if (loading) {
+  const { data: resourcesData, isLoading, error, refetch } = useQuery({
+    queryKey: ['resources', userId, profileData?.updatedAt],
+    queryFn: async () => {
+      if (!userId) throw new Error("No user ID found");
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000/api"}/learning-resources`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ userId }),
+      });
+      if (!res.ok) throw new Error("Failed to fetch resources");
+      const json = await res.json();
+      if (!json.success) throw new Error(json.message);
+      return json;
+    },
+    enabled: !!userId,
+  });
+
+  const { header, resources } = resourcesData || {};
+  const targetCareer = header?.targetCareer || 'Your Career';
+
+  const mappedResources = useMemo(() => {
+    if (!resources) return [];
+    return resources.map((r: any) => ({
+      ...r,
+      description: r.shortReason || r.description,
+      url: r.officialUrl || r.url,
+    }));
+  }, [resources]);
+
+  const filteredResources = useMemo(() => {
+    if (!mappedResources) return [];
+    return mappedResources.filter((r: any) => {
+      const matchesSearch = r.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                            r.skill.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            r.provider.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesType = filterType === "All" || r.type === filterType;
+      const matchesDifficulty = filterDifficulty === "All" || r.difficulty === filterDifficulty;
+      return matchesSearch && matchesType && matchesDifficulty;
+    });
+  }, [mappedResources, searchQuery, filterType, filterDifficulty]);
+
+  // Get unique types and difficulties for filters
+  const uniqueTypes = useMemo(() => ["All", ...Array.from(new Set((mappedResources || []).map((r: any) => r.type)))], [mappedResources]);
+  const uniqueDifficulties = useMemo(() => ["All", ...Array.from(new Set((mappedResources || []).map((r: any) => r.difficulty)))], [mappedResources]);
+
+  // Summary Metrics
+  const totalResources = mappedResources.length;
+  const totalCourses = mappedResources.filter(r => r.type === "Courses").length;
+  const totalPractice = mappedResources.filter(r => r.type === "Practice Platforms").length;
+  const totalDocs = mappedResources.filter(r => r.type === "Documentation").length;
+
+  const groupedResources = {
+    "High Priority": filteredResources.filter((r: any) => r.type === "High Priority"),
+    "Documentation": filteredResources.filter((r: any) => r.type === "Documentation"),
+    "Courses": filteredResources.filter((r: any) => r.type === "Courses"),
+    "YouTube": filteredResources.filter((r: any) => r.type === "YouTube"),
+    "Practice Platforms": filteredResources.filter((r: any) => r.type === "Practice Platforms"),
+    "Books": filteredResources.filter((r: any) => r.type === "Books"),
+    "Certifications": filteredResources.filter((r: any) => r.type === "Certifications"),
+  };
+
+  if (isLoading) {
     return (
       <DashboardLayout>
-        <div className="flex flex-col items-center justify-center min-h-[60vh]">
-           <div className="w-12 h-12 border-4 border-emerald-100 rounded-full animate-spin border-t-[#00a878]"></div>
-           <p className="mt-4 text-slate-500 font-medium">Loading personalized resources...</p>
+        <div className="min-w-0 w-full max-w-7xl mx-auto pb-10">
+          <div className="mb-8">
+            <div className="w-64 h-10 bg-slate-200 animate-pulse rounded-xl mb-3"></div>
+            <div className="w-96 h-5 bg-slate-100 animate-pulse rounded-md"></div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+             {[1, 2, 3, 4, 5, 6].map(i => <ResourceSkeleton key={i} />)}
+          </div>
         </div>
       </DashboardLayout>
     )
   }
 
-  if (error) {
+  if (error || (!resourcesData && !isLoading)) {
     return (
        <DashboardLayout>
-         <div className="flex flex-col items-center justify-center min-h-[60vh]">
-           <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-4">
-              <span className="material-symbols-outlined text-3xl">error</span>
+         <div className="flex flex-col items-center justify-center min-h-[60vh] bg-white rounded-3xl border border-slate-200 p-10 max-w-2xl mx-auto mt-10 shadow-sm text-center">
+           <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-6">
+              <span className="material-symbols-outlined text-4xl">error</span>
            </div>
-           <h3 className="text-lg font-bold text-slate-900 mb-2">Failed to load resources</h3>
-           <p className="text-slate-500 mb-6">{error}</p>
-           <button onClick={() => window.location.reload()} className="bg-[#00a878] text-white px-6 py-2 rounded-xl font-bold">Try Again</button>
+           <h3 className="text-2xl font-extrabold text-slate-900 mb-3">Failed to load resources</h3>
+           <p className="text-slate-500 font-medium mb-8 max-w-md mx-auto">We couldn't generate your learning materials. Please try again or check your connection.</p>
+           <button onClick={() => refetch()} className="bg-[#00a878] hover:bg-[#008f66] transition-colors text-white px-8 py-3.5 rounded-xl font-bold flex items-center gap-2 mx-auto">
+             <span className="material-symbols-outlined text-[20px]">refresh</span>
+             Try Again
+           </button>
          </div>
        </DashboardLayout>
     )
@@ -169,346 +232,131 @@ function ResourcesPage() {
             <span className="text-2xl">📚</span>
           </div>
           <p className="text-sm font-medium text-slate-500">
-            Curated resources to help you learn in-demand skills and grow faster.
+            Curated official documentation and verified tutorials targeting your specific skill gaps.
           </p>
         </div>
 
-        {/* Context Bar */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm mb-8 flex flex-wrap gap-8 items-center border border-slate-100 min-w-0">
-          <div className="flex items-center gap-4 flex-1 min-w-[250px]">
+        {/* Summary Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
             <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center text-[#00a878]">
+              <span className="material-symbols-outlined">library_books</span>
+            </div>
+            <div>
+              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Total Resources</p>
+              <p className="text-xl font-extrabold text-slate-900">{totalResources}</p>
+            </div>
+          </div>
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+            <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-500">
+              <span className="material-symbols-outlined">school</span>
+            </div>
+            <div>
+              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Courses</p>
+              <p className="text-xl font-extrabold text-slate-900">{totalCourses}</p>
+            </div>
+          </div>
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+            <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-blue-500">
+              <span className="material-symbols-outlined">menu_book</span>
+            </div>
+            <div>
+              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Documentation</p>
+              <p className="text-xl font-extrabold text-slate-900">{totalDocs}</p>
+            </div>
+          </div>
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
+            <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center text-purple-500">
               <span className="material-symbols-outlined">code</span>
             </div>
             <div>
-              <p className="text-[11px] text-slate-400 uppercase tracking-wider mb-1 font-bold">Target Career</p>
-              <p className="text-[16px] font-extrabold text-slate-900 truncate">{MOCK_RESOURCES_DATA.header.targetCareer}</p>
-            </div>
-          </div>
-          <div className="hidden lg:block w-px h-12 bg-slate-100"></div>
-          
-          <div className="flex-1 min-w-[280px]">
-            <p className="text-[11px] text-slate-400 uppercase tracking-wider mb-2 font-bold">Focus Areas (Based on Skill Gaps)</p>
-            <div className="flex gap-2 flex-wrap">
-              {MOCK_RESOURCES_DATA.header.focusAreas.map(area => (
-                <span key={area} className="px-3 py-1 bg-slate-50 text-slate-700 text-xs rounded-full font-bold border border-slate-100">
-                  {area}
-                </span>
-              ))}
-            </div>
-          </div>
-          <div className="hidden xl:block w-px h-12 bg-slate-100"></div>
-          
-          <div className="flex gap-8 flex-wrap">
-            <div>
-              <p className="text-[11px] text-slate-400 uppercase tracking-wider mb-1 font-bold">Total Recommended</p>
-              <p className="text-[16px] font-extrabold text-[#00a878]">{MOCK_RESOURCES_DATA.header.totalRecommended} Resources</p>
-            </div>
-            <div>
-              <p className="text-[11px] text-slate-400 uppercase tracking-wider mb-1 font-bold flex items-center gap-1">
-                <span className="material-symbols-outlined text-[14px]">schedule</span> Weekly Goal
-              </p>
-              <p className="text-[16px] font-extrabold text-slate-900">{MOCK_RESOURCES_DATA.header.weeklyGoal}</p>
+              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Practice Sites</p>
+              <p className="text-xl font-extrabold text-slate-900">{totalPractice}</p>
             </div>
           </div>
         </div>
 
-        {/* Main Grid Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 min-w-0">
+        {/* Context Bar & Filters */}
+        <div className="bg-white rounded-3xl p-5 shadow-sm mb-8 border border-slate-200 min-w-0 flex flex-col xl:flex-row gap-6 justify-between items-start xl:items-center">
           
-          {/* Left Column (Main Content) - 8 columns */}
-          <div className="lg:col-span-8 space-y-8 min-w-0">
-            
-            {/* Recommended Courses Section */}
-            <section className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 min-w-0">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-extrabold text-slate-900">Recommended Courses</h3>
-                <a className="text-[12px] font-bold text-[#00a878] hover:underline flex items-center gap-1" href="#">
-                  View All Courses <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-                </a>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {MOCK_RESOURCES_DATA.courses.map(course => (
-                  <div key={course.id} className="border border-slate-100 rounded-xl p-4 hover:shadow-md hover:-translate-y-0.5 bg-slate-50/50 cursor-pointer group transition-all">
-                    <div className="flex gap-4">
-                      <div className="w-16 h-16 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: course.iconBg }}>
-                        {course.iconType === 'react' ? (
-                          <svg className="w-8 h-8 text-[#61dafb]" fill="currentColor" viewBox="0 0 24 24"><path d="M11.96 4c-3.1 0-5.8.58-7.82 1.57-1.92.93-3.14 2.2-3.14 3.53s1.22 2.6 3.14 3.53c2 .99 4.72 1.57 7.82 1.57s5.82-.58 7.82-1.57c1.92-.93 3.14-2.2 3.14-3.53s-1.22-2.6-3.14-3.53C21.78 4.58 19.06 4 15.96 4zM11.96 6.54c2.8 0 5.2.47 6.94 1.28 1.62.75 2.5 1.63 2.5 2.28s-.88 1.53-2.5 2.28c-1.74.81-4.14 1.28-6.94 1.28s-5.2-.47-6.94-1.28c-1.62-.75-2.5-1.63-2.5-2.28s.88-1.53 2.5-2.28C6.76 7.01 9.16 6.54 11.96 6.54zm-2.82 3.66a2.82 2.82 0 1 0 0 5.64 2.82 2.82 0 0 0 0-5.64z"></path></svg>
-                        ) : (
-                          <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.24 13.96c-.33 1.05-1.12 1.83-2.17 2.16-1.05.33-2.2.33-3.25 0-1.05-.33-1.84-1.11-2.17-2.16-.33-1.05-.33-2.2 0-3.25.33-1.05 1.12-1.84 2.17-2.17 1.05-.33 2.2-.33 3.25 0 1.05.33 1.84 1.12 2.17 2.17.33 1.05.33 2.2 0 3.25z"></path></svg>
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <h4 className="text-[14px] font-extrabold text-slate-900 line-clamp-2 mb-1 group-hover:text-[#00a878] transition-colors">{course.title}</h4>
-                        <p className="text-xs font-medium text-slate-500 mb-2">{course.provider}</p>
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[14px] text-amber-500" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                            <span className="text-xs font-bold text-slate-700">{course.rating}</span>
-                            <span className="text-xs font-medium text-slate-500">({course.reviews})</span>
-                          </div>
-                          <span className="px-2 py-0.5 bg-emerald-50 text-[#00a878] border border-emerald-100 text-[10px] font-extrabold rounded">
-                            {course.level}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-4 pt-3 border-t border-slate-100 flex justify-between items-center text-xs font-medium text-slate-500">
-                      <div className="flex gap-4">
-                        <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">schedule</span> {course.duration}</span>
-                        <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">language</span> {course.language}</span>
-                      </div>
-                      <button className="text-slate-400 hover:text-[#00a878] transition-colors">
-                        <span className="material-symbols-outlined text-[18px]">bookmark_border</span>
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            {/* Certifications Section */}
-            <section className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 min-w-0">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-extrabold text-slate-900">Certifications to Boost Your Profile</h3>
-                <a className="text-[12px] font-bold text-[#00a878] hover:underline flex items-center gap-1" href="#">
-                  View All <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-                </a>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                {MOCK_RESOURCES_DATA.certifications.map(cert => (
-                  <div key={cert.id} className="border border-slate-100 rounded-xl p-4 hover:shadow-md hover:-translate-y-0.5 bg-slate-50/50 flex flex-col h-full transition-all cursor-pointer group">
-                    <div className="flex items-start gap-3 mb-3">
-                      {cert.img && <img alt="Logo" className="w-8 h-8 object-contain shrink-0" src={cert.img} />}
-                      {cert.type === 'text' && (
-                        <div className="w-8 h-8 flex items-center justify-center font-extrabold text-[10px] text-white rounded shrink-0" style={{ backgroundColor: cert.bg }}>
-                          {cert.text}
-                        </div>
-                      )}
-                      {cert.type === 'icon' && (
-                        <div className="w-8 h-8 flex items-center justify-center rounded shrink-0" style={{ backgroundColor: cert.bg }}>
-                          <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M11.4 24H0V12.6h11.4V24zM24 24H12.6V12.6H24V24zM11.4 11.4H0V0h11.4v11.4zm12.6 0H12.6V0H24v11.4z"></path></svg>
-                        </div>
-                      )}
-                      <div className="min-w-0">
-                        <h4 className="text-[13px] font-extrabold text-slate-900 leading-snug group-hover:text-[#00a878] transition-colors line-clamp-2">{cert.title}</h4>
-                        <p className="text-[11px] font-medium text-slate-500 mt-1">{cert.provider}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 mb-4 mt-auto">
-                      <div className="flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[14px] text-amber-500" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-                        <span className="text-xs font-bold text-slate-700">{cert.rating}</span>
-                        <span className="text-xs font-medium text-slate-500">({cert.reviews})</span>
-                      </div>
-                      <span className="px-2 py-0.5 bg-emerald-50 text-[#00a878] border border-emerald-100 text-[10px] font-extrabold rounded">
-                        {cert.level}
-                      </span>
-                    </div>
-                    <div className="pt-3 border-t border-slate-100 flex justify-between items-center text-xs font-medium text-slate-500">
-                      <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[14px]">calendar_month</span> {cert.duration}</span>
-                      <button className="text-slate-400 hover:text-[#00a878] transition-colors">
-                        <span className="material-symbols-outlined text-[18px]">bookmark_border</span>
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            {/* Resource Categories Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-              
-              {/* Study Materials */}
-              <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex flex-col h-full">
-                <h4 className="text-[15px] font-extrabold text-slate-900 mb-4 pb-2 border-b border-slate-100">Study Materials</h4>
-                <ul className="space-y-3 flex-1">
-                  {MOCK_RESOURCES_DATA.categories.studyMaterials.map((item, idx) => (
-                    <li key={idx}>
-                      <a className="flex items-center gap-2 text-[13px] font-semibold text-slate-600 hover:text-[#00a878] transition-colors" href="#">
-                        <span className="material-symbols-outlined text-[16px] text-slate-400">{item.icon}</span> {item.name}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-                <div className="mt-4 pt-3 text-center">
-                  <a className="text-[11px] font-extrabold text-[#00a878] hover:underline" href="#">View All →</a>
-                </div>
-              </div>
-
-              {/* Practice Platforms */}
-              <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex flex-col h-full">
-                <h4 className="text-[15px] font-extrabold text-slate-900 mb-4 pb-2 border-b border-slate-100">Practice Platforms</h4>
-                <ul className="space-y-3 flex-1">
-                  {MOCK_RESOURCES_DATA.categories.practicePlatforms.map((item, idx) => (
-                    <li key={idx}>
-                      <a className="flex items-center gap-2 text-[13px] font-semibold text-slate-600 hover:text-[#00a878] transition-colors" href="#">
-                        <span className="material-symbols-outlined text-[16px] text-slate-400">{item.icon}</span> {item.name}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-                <div className="mt-4 pt-3 text-center">
-                  <a className="text-[11px] font-extrabold text-[#00a878] hover:underline" href="#">View All →</a>
-                </div>
-              </div>
-
-              {/* Video Platforms */}
-              <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex flex-col h-full">
-                <h4 className="text-[15px] font-extrabold text-slate-900 mb-4 pb-2 border-b border-slate-100">Video Platforms</h4>
-                <ul className="space-y-3 flex-1">
-                  {MOCK_RESOURCES_DATA.categories.videoPlatforms.map((item, idx) => (
-                    <li key={idx}>
-                      <a className="flex items-center gap-2 text-[13px] font-semibold text-slate-600 hover:text-[#00a878] transition-colors" href="#">
-                        <span className={`material-symbols-outlined text-[16px] ${item.color}`}>{item.icon}</span> {item.name}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-                <div className="mt-4 pt-3 text-center">
-                  <a className="text-[11px] font-extrabold text-[#00a878] hover:underline" href="#">View All →</a>
-                </div>
-              </div>
-
-              {/* Helpful Websites */}
-              <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex flex-col h-full">
-                <h4 className="text-[15px] font-extrabold text-slate-900 mb-4 pb-2 border-b border-slate-100">Helpful Websites</h4>
-                <ul className="space-y-3 flex-1">
-                  {MOCK_RESOURCES_DATA.categories.helpfulWebsites.map((item, idx) => (
-                    <li key={idx}>
-                      <a className="flex items-center gap-2 text-[13px] font-semibold text-slate-600 hover:text-[#00a878] transition-colors" href="#">
-                        {item.icon ? (
-                          <span className={`material-symbols-outlined text-[16px] ${item.color}`}>{item.icon}</span>
-                        ) : (
-                          <span className={`font-extrabold font-mono text-[10px] w-4 text-center ${item.style}`}>{item.iconText}</span>
-                        )}
-                        {item.name}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-                <div className="mt-4 pt-3 text-center">
-                  <a className="text-[11px] font-extrabold text-[#00a878] hover:underline" href="#">View All →</a>
-                </div>
-              </div>
-
+          <div className="flex items-center gap-4 min-w-[250px]">
+            <div className="w-12 h-12 bg-slate-50 border border-slate-100 rounded-xl flex items-center justify-center text-slate-600">
+              <span className="material-symbols-outlined text-[24px]">track_changes</span>
             </div>
-
-            {/* Skill-gap Information */}
-            <div className="bg-gradient-to-r from-emerald-50 to-white rounded-2xl p-6 border border-emerald-100 flex flex-col sm:flex-row items-center justify-between mt-4 shadow-sm gap-4">
-              <div className="flex items-center gap-4 text-center sm:text-left">
-                <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm text-[#00a878] border border-emerald-50 shrink-0">
-                  <span className="material-symbols-outlined">track_changes</span>
-                </div>
-                <div>
-                  <h4 className="text-[15px] font-extrabold text-slate-900 mb-1">Focus on Skill Gaps</h4>
-                  <p className="text-[12px] font-medium text-slate-500">Prioritize learning the missing skills identified in your assessment to accelerate your career growth.</p>
-                </div>
-              </div>
+            <div>
+              <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-0.5 font-extrabold">Target Career</p>
+              <p className="text-lg font-extrabold text-slate-900 truncate">{targetCareer}</p>
             </div>
-
           </div>
 
-          {/* Right Column (Side Panels) - 4 columns */}
-          <div className="lg:col-span-4 space-y-8 min-w-0">
-            
-            {/* AI Recommended For You */}
-            <div className="bg-emerald-50/50 rounded-3xl p-6 relative overflow-hidden border border-emerald-100">
-              <div className="absolute top-4 right-4 text-emerald-100/50 text-3xl">✦</div>
-              <div className="flex items-center gap-2 mb-6">
-                <span className="material-symbols-outlined text-[#00a878]" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
-                <h3 className="text-[17px] font-extrabold text-slate-900">AI Recommended For You</h3>
-              </div>
-              <div className="space-y-4">
-                {MOCK_RESOURCES_DATA.recommendations.map((rec, idx) => (
-                  <div key={rec.id} className="flex items-start gap-3">
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-extrabold shrink-0 mt-0.5 shadow-sm
-                      ${idx === 0 ? 'bg-[#00a878] text-white' : 
-                        idx === 1 ? 'bg-emerald-100 text-[#00a878]' : 
-                        idx < 4 ? 'bg-emerald-50 text-slate-500' : 'bg-slate-100 text-slate-400'}`}>
-                      {rec.id}
-                    </div>
-                    <div>
-                      <p className="text-[13px] font-bold text-slate-800 mb-1.5 hover:text-[#00a878] cursor-pointer leading-snug">{rec.title}</p>
-                      <span className={`text-[9px] px-2 py-0.5 rounded-full font-extrabold uppercase tracking-wide border border-black/5 ${rec.color}`}>
-                        {rec.priority}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <button className="w-full mt-6 py-3 border border-[#00a878]/30 text-[#00a878] rounded-xl text-[12px] font-extrabold hover:bg-[#00a878] hover:text-white transition-colors bg-white/50 backdrop-blur-sm">
-                  View Full Recommendation Plan →
-              </button>
+          {/* Filters */}
+          <div className="flex flex-wrap items-center gap-4 w-full xl:w-auto">
+            <div className="relative flex-grow sm:flex-grow-0 sm:min-w-[250px]">
+              <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">search</span>
+              <input 
+                type="text" 
+                placeholder="Search resources, skills..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-[#00a878] focus:border-transparent outline-none transition-all"
+              />
             </div>
-
-            {/* Your Learning Progress */}
-            <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm min-w-0">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-[17px] font-extrabold text-slate-900">Your Learning Progress</h3>
-                <a className="text-[11px] font-bold text-[#00a878] hover:underline" href="#">View All →</a>
-              </div>
-              <div className="space-y-6">
-                {MOCK_RESOURCES_DATA.progress.map((prog, idx) => (
-                  <div key={idx}>
-                    <div className="flex justify-between text-[13px] mb-2">
-                      <div className="flex items-center gap-2">
-                        {prog.icon ? (
-                          <span className={`material-symbols-outlined text-[16px] ${prog.iconColor}`}>{prog.icon}</span>
-                        ) : (
-                          <div className="w-4 h-4 bg-slate-800 text-white flex items-center justify-center rounded text-[8px] font-mono">{prog.customIcon}</div>
-                        )}
-                        <span className="font-extrabold text-slate-800">{prog.title}</span>
-                      </div>
-                      <span className="font-black text-slate-900">{prog.percent}%</span>
-                    </div>
-                    <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-[#00a878] rounded-full" style={{ width: `${prog.percent}%` }}></div>
-                    </div>
-                    <p className="text-[10px] font-bold text-slate-500 mt-1.5 text-right">{prog.status}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-6 pt-4 border-t border-slate-50 text-center">
-                <a className="text-[12px] font-extrabold text-[#00a878] hover:underline flex items-center justify-center gap-1" href="#">
-                    Go to My Learning <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
-                </a>
-              </div>
+            <div className="flex gap-4 w-full sm:w-auto">
+              <select 
+                value={filterType} 
+                onChange={(e) => setFilterType(e.target.value)}
+                className="flex-1 sm:flex-none px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-[#00a878] cursor-pointer appearance-none"
+                style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%2364748b\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")', backgroundPosition: 'right 1rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.2em' }}
+              >
+                {uniqueTypes.map((type: any, i) => <option key={i} value={type}>{type === "All" ? "All Types" : type}</option>)}
+              </select>
+              <select 
+                value={filterDifficulty} 
+                onChange={(e) => setFilterDifficulty(e.target.value)}
+                className="flex-1 sm:flex-none px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-[#00a878] cursor-pointer appearance-none"
+                style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%2364748b\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")', backgroundPosition: 'right 1rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.2em' }}
+              >
+                {uniqueDifficulties.map((diff: any, i) => <option key={i} value={diff}>{diff === "All" ? "All Levels" : diff}</option>)}
+              </select>
             </div>
-
-            {/* Weekly Learning Plan Widget */}
-            <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm min-w-0">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-[17px] font-extrabold text-slate-900 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[20px] text-slate-400">calendar_month</span> Weekly Plan
-                </h3>
-                <a className="text-[11px] font-bold text-[#00a878] hover:underline" href="#">View Calendar →</a>
-              </div>
-              
-              <div className="flex justify-between items-end gap-1 mb-6 h-24">
-                {MOCK_RESOURCES_DATA.weeklyPlan.map((day, idx) => (
-                  <div key={idx} className={`flex flex-col items-center gap-1.5 ${day.status === 'future' ? 'opacity-60' : ''}`}>
-                    <span className={`text-[10px] ${day.status === 'today' ? 'text-slate-800 font-extrabold' : 'text-slate-400 font-bold'}`}>{day.day}</span>
-                    <div className={`w-8 h-16 rounded-t-md relative overflow-hidden ${day.status === 'future' ? 'bg-slate-50' : day.status === 'today' ? 'bg-slate-100' : 'bg-emerald-50'}`}>
-                      <div className="absolute bottom-0 w-full bg-[#00a878] rounded-sm transition-all" style={{ height: day.height }}></div>
-                    </div>
-                    {day.status === 'done' ? (
-                      <span className="material-symbols-outlined text-[14px] text-[#00a878]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                    ) : day.status === 'today' ? (
-                      <div className="w-2 h-2 bg-[#00a878] rounded-full"></div>
-                    ) : (
-                      <div className="w-2 h-2 bg-transparent"></div>
-                    )}
-                  </div>
-                ))}
-              </div>
-              
-              <div className="bg-amber-50 text-amber-700 text-[11px] p-3 rounded-xl text-center border border-amber-100 font-bold">
-                  ⭐ Consistency is key. Keep learning! 🚀
-              </div>
-            </div>
-
           </div>
         </div>
+
+        {/* Dynamic Resources Grid */}
+        <div className="space-y-4">
+          <ResourceGroup title="High Priority" items={groupedResources["High Priority"]} icon="priority_high" colorClass="text-rose-500" defaultExpanded={true} />
+          <ResourceGroup title="Courses" items={groupedResources["Courses"]} icon="school" colorClass="text-indigo-500" defaultExpanded={true} />
+          <ResourceGroup title="Practice Platforms" items={groupedResources["Practice Platforms"]} icon="code" colorClass="text-emerald-500" defaultExpanded={true} />
+          <ResourceGroup title="Documentation" items={groupedResources["Documentation"]} icon="library_books" colorClass="text-blue-500" defaultExpanded={false} />
+          <ResourceGroup title="YouTube" items={groupedResources["YouTube"]} icon="smart_display" colorClass="text-red-500" defaultExpanded={false} />
+          <ResourceGroup title="Books" items={groupedResources["Books"]} icon="menu_book" colorClass="text-amber-600" defaultExpanded={false} />
+          <ResourceGroup title="Certifications" items={groupedResources["Certifications"]} icon="workspace_premium" colorClass="text-purple-500" defaultExpanded={false} />
+          
+          {/* Fallback for hallucinated types */}
+          {(uniqueTypes as string[]).filter(t => t !== "All" && !["High Priority", "Documentation", "Courses", "YouTube", "Practice Platforms", "Books", "Certifications"].includes(t)).map((type) => (
+             <ResourceGroup key={type} title={type} items={filteredResources.filter((r: any) => r.type === type)} icon="category" colorClass="text-slate-500" defaultExpanded={false} />
+          ))}
+          
+          {(!filteredResources || filteredResources.length === 0) && (
+             <div className="text-center py-24 bg-white rounded-3xl border border-dashed border-slate-300 shadow-sm">
+                 <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <span className="material-symbols-outlined text-5xl text-slate-400">search_off</span>
+                 </div>
+                 <h3 className="text-2xl font-extrabold text-slate-900 mb-3">No matching resources</h3>
+                 <p className="text-base text-slate-500 font-medium max-w-md mx-auto">We couldn't find any resources matching your current filters. Try adjusting your search terms or filter criteria.</p>
+                 
+                 {(searchQuery !== "" || filterType !== "All" || filterDifficulty !== "All") && (
+                   <button 
+                     onClick={() => { setSearchQuery(""); setFilterType("All"); setFilterDifficulty("All"); }}
+                     className="mt-8 text-[#00a878] font-bold hover:underline"
+                   >
+                     Clear all filters
+                   </button>
+                 )}
+             </div>
+          )}
+        </div>
+
       </div>
     </DashboardLayout>
   )

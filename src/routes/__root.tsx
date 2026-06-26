@@ -1,9 +1,9 @@
 import { createRootRoute, Outlet } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/router-devtools'
 import React from 'react'
 import { QueryClient } from '@tanstack/react-query'
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client'
 import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persister'
+import { Toaster } from '../components/ui/sonner'
 
 class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean, error: any}> {
   constructor(props: any) { super(props); this.state = { hasError: false, error: null }; }
@@ -35,7 +35,7 @@ const queryClient = new QueryClient({
 // Setup Persister
 const persister = createSyncStoragePersister({
   storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-  key: 'STUDENT_COUNSELLING_QUERY_CACHE',
+  key: 'STUDENT_COUNSELLING_QUERY_CACHE_V2',
 })
 
 export const Route = createRootRoute({
@@ -43,7 +43,7 @@ export const Route = createRootRoute({
     <ErrorBoundary>
       <PersistQueryClientProvider client={queryClient} persistOptions={{ persister }}>
         <Outlet />
-        {import.meta.env.DEV && <TanStackRouterDevtools />}
+        <Toaster />
       </PersistQueryClientProvider>
     </ErrorBoundary>
   ),

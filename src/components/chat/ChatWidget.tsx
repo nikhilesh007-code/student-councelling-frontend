@@ -23,7 +23,7 @@ export const ChatWidget: React.FC = () => {
 
   useEffect(() => {
     // Fetch user session to get ID
-    fetch("http://localhost:3000/api/auth/get-session", { credentials: "include" })
+    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000/api"}/auth/get-session`, { credentials: "include" })
       .then(res => res.json())
       .then(data => {
         if (data?.user?.id) {
@@ -55,11 +55,12 @@ export const ChatWidget: React.FC = () => {
     }
     abortControllerRef.current = new AbortController();
 
+    const now = new Date();
     const userMsg: Message = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       role: 'user',
       text: messageText,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      timestamp: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
     setMessages(prev => [...prev, userMsg]);
@@ -73,7 +74,7 @@ export const ChatWidget: React.FC = () => {
     }, 30000); // 30s timeout
 
     try {
-      const res = await fetch("http://localhost:3000/api/chat", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000/api"}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, message: messageText }),
@@ -83,7 +84,7 @@ export const ChatWidget: React.FC = () => {
       const data = await res.json();
       
       const aiMsg: Message = {
-        id: (Date.now() + 1).toString(),
+        id: crypto.randomUUID(),
         role: 'assistant',
         text: data.success ? data.reply : "I'm sorry, I encountered an error processing your request.",
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -92,7 +93,7 @@ export const ChatWidget: React.FC = () => {
     } catch (err: any) {
       console.error("Chat API error:", err);
       const errorMsg: Message = {
-        id: (Date.now() + 1).toString(),
+        id: crypto.randomUUID(),
         role: 'assistant',
         text: err.name === 'AbortError' ? "Request timed out. Please try again." : "Network error. Please try again later.",
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
