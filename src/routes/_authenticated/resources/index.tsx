@@ -52,29 +52,29 @@ function ResourceGroup({ title, items, icon, colorClass, defaultExpanded = true 
       <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 px-6 pb-6 pt-2 transition-all duration-300 ${isExpanded ? 'block' : 'hidden'}`}>
         {items.map((resource: any, idx: number) => {
           let badgeColor = "text-slate-600 bg-slate-100 border-transparent";
-          if (resource.type === "Documentation") badgeColor = "text-blue-600 bg-blue-50/60 border-blue-100/50";
-          else if (resource.type === "Courses") badgeColor = "text-indigo-600 bg-indigo-50/60 border-indigo-100/50";
-          else if (resource.type === "YouTube") badgeColor = "text-red-600 bg-red-50/60 border-red-100/50";
-          else if (resource.type === "Practice Platforms") badgeColor = "text-emerald-600 bg-emerald-50/60 border-emerald-100/50";
-          else if (resource.type === "High Priority") badgeColor = "text-rose-600 bg-rose-50/60 border-rose-100/50";
-          else if (resource.type === "Books") badgeColor = "text-amber-600 bg-amber-50/60 border-amber-100/50";
-          else if (resource.type === "Certifications") badgeColor = "text-purple-600 bg-purple-50/60 border-purple-100/50";
+          if (resource.type === "Official Docs") badgeColor = "text-blue-600 bg-blue-50/60 border-blue-100/50";
+          else if (resource.type === "Course") badgeColor = "text-indigo-600 bg-indigo-50/60 border-indigo-100/50";
+          else if (resource.type === "Video") badgeColor = "text-red-600 bg-red-50/60 border-red-100/50";
+          else if (resource.type === "Roadmap") badgeColor = "text-emerald-600 bg-emerald-50/60 border-emerald-100/50";
 
           return (
             <div key={idx} className="border border-slate-200 rounded-[20px] bg-white hover:shadow-xl hover:-translate-y-1 hover:border-slate-300 group transition-all duration-300 flex flex-col h-full relative overflow-hidden">
+              {resource.thumbnail && (
+                <div className="w-full h-40 bg-slate-100 overflow-hidden relative">
+                   <img src={resource.thumbnail} alt={resource.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                   <div className="absolute inset-0 bg-black/10 group-hover:bg-black/0 transition-colors"></div>
+                   {resource.duration && resource.type === "Video" && (
+                      <div className="absolute bottom-2 right-2 bg-black/80 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+                         {resource.duration}
+                      </div>
+                   )}
+                </div>
+              )}
               <div className="p-6 flex-grow flex flex-col">
                 <div className="flex justify-between items-start mb-6">
                   <span className={`px-3 py-1.5 text-[11px] font-bold uppercase tracking-widest rounded-lg border h-7 flex items-center ${badgeColor}`}>
                     {resource.type}
                   </span>
-                  <div className="flex gap-2">
-                    <button className="w-9 h-9 rounded-full bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-blue-500 transition-colors tooltip-trigger" title="Bookmark Resource">
-                      <span className="material-symbols-outlined text-[18px]">bookmark_border</span>
-                    </button>
-                    <button className="w-9 h-9 rounded-full bg-slate-50 hover:bg-slate-100 flex items-center justify-center text-slate-400 hover:text-[#00a878] transition-colors tooltip-trigger" title="Mark as Completed">
-                      <span className="material-symbols-outlined text-[18px]">check_circle</span>
-                    </button>
-                  </div>
                 </div>
                 
                 <h4 className="text-[22px] font-bold text-slate-900 mb-2 leading-snug line-clamp-2">{resource.title}</h4>
@@ -92,10 +92,6 @@ function ResourceGroup({ title, items, icon, colorClass, defaultExpanded = true 
                 </div>
                 
                 <div className="bg-slate-50/50 rounded-xl p-3 mt-auto border border-slate-100/50">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="material-symbols-outlined text-[14px] text-[#00a878]">track_changes</span>
-                    <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wide">Target: {resource.skill}</span>
-                  </div>
                   <p className="text-[12px] text-slate-600 font-medium leading-relaxed italic line-clamp-3">
                     "{resource.description}"
                   </p>
@@ -159,7 +155,7 @@ function ResourcesPage() {
     if (!mappedResources) return [];
     return mappedResources.filter((r: any) => {
       const matchesSearch = r.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                            r.skill.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            r.topic.toLowerCase().includes(searchQuery.toLowerCase()) ||
                             r.provider.toLowerCase().includes(searchQuery.toLowerCase());
       const matchesType = filterType === "All" || r.type === filterType;
       const matchesDifficulty = filterDifficulty === "All" || r.difficulty === filterDifficulty;
@@ -173,19 +169,18 @@ function ResourcesPage() {
 
   // Summary Metrics
   const totalResources = mappedResources.length;
-  const totalCourses = mappedResources.filter(r => r.type === "Courses").length;
-  const totalPractice = mappedResources.filter(r => r.type === "Practice Platforms").length;
-  const totalDocs = mappedResources.filter(r => r.type === "Documentation").length;
+  const totalVideos = mappedResources.filter(r => r.type === "Video").length;
+  const totalCourses = mappedResources.filter(r => r.type === "Course").length;
+  const totalDocs = mappedResources.filter(r => r.type === "Official Docs").length;
 
-  const groupedResources = {
-    "High Priority": filteredResources.filter((r: any) => r.type === "High Priority"),
-    "Documentation": filteredResources.filter((r: any) => r.type === "Documentation"),
-    "Courses": filteredResources.filter((r: any) => r.type === "Courses"),
-    "YouTube": filteredResources.filter((r: any) => r.type === "YouTube"),
-    "Practice Platforms": filteredResources.filter((r: any) => r.type === "Practice Platforms"),
-    "Books": filteredResources.filter((r: any) => r.type === "Books"),
-    "Certifications": filteredResources.filter((r: any) => r.type === "Certifications"),
-  };
+  const groupedResources = useMemo(() => {
+    const groups: Record<string, any[]> = {};
+    filteredResources.forEach((r: any) => {
+      if (!groups[r.topic]) groups[r.topic] = [];
+      groups[r.topic].push(r);
+    });
+    return groups;
+  }, [filteredResources]);
 
   if (isLoading) {
     return (
@@ -266,12 +261,12 @@ function ResourcesPage() {
             </div>
           </div>
           <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
-            <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center text-purple-500">
-              <span className="material-symbols-outlined">code</span>
+            <div className="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center text-red-500">
+              <span className="material-symbols-outlined">smart_display</span>
             </div>
             <div>
-              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Practice Sites</p>
-              <p className="text-xl font-extrabold text-slate-900">{totalPractice}</p>
+              <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Videos</p>
+              <p className="text-xl font-extrabold text-slate-900">{totalVideos}</p>
             </div>
           </div>
         </div>
@@ -322,20 +317,38 @@ function ResourcesPage() {
           </div>
         </div>
 
-        {/* Dynamic Resources Grid */}
+        {/* Target Career Resources */}
+        {groupedResources[targetCareer] && groupedResources[targetCareer].length > 0 && (
+          <div className="mb-10">
+            <ResourceGroup 
+              title={`🎯 ${targetCareer}`}
+              items={groupedResources[targetCareer]} 
+              icon="star" 
+              colorClass="text-amber-500" 
+              defaultExpanded={true} 
+            />
+          </div>
+        )}
+
+        {/* Dynamic Resources Grid (Other Topics) */}
         <div className="space-y-4">
-          <ResourceGroup title="High Priority" items={groupedResources["High Priority"]} icon="priority_high" colorClass="text-rose-500" defaultExpanded={true} />
-          <ResourceGroup title="Courses" items={groupedResources["Courses"]} icon="school" colorClass="text-indigo-500" defaultExpanded={true} />
-          <ResourceGroup title="Practice Platforms" items={groupedResources["Practice Platforms"]} icon="code" colorClass="text-emerald-500" defaultExpanded={true} />
-          <ResourceGroup title="Documentation" items={groupedResources["Documentation"]} icon="library_books" colorClass="text-blue-500" defaultExpanded={false} />
-          <ResourceGroup title="YouTube" items={groupedResources["YouTube"]} icon="smart_display" colorClass="text-red-500" defaultExpanded={false} />
-          <ResourceGroup title="Books" items={groupedResources["Books"]} icon="menu_book" colorClass="text-amber-600" defaultExpanded={false} />
-          <ResourceGroup title="Certifications" items={groupedResources["Certifications"]} icon="workspace_premium" colorClass="text-purple-500" defaultExpanded={false} />
-          
-          {/* Fallback for hallucinated types */}
-          {(uniqueTypes as string[]).filter(t => t !== "All" && !["High Priority", "Documentation", "Courses", "YouTube", "Practice Platforms", "Books", "Certifications"].includes(t)).map((type) => (
-             <ResourceGroup key={type} title={type} items={filteredResources.filter((r: any) => r.type === type)} icon="category" colorClass="text-slate-500" defaultExpanded={false} />
-          ))}
+          {Object.entries(groupedResources)
+            .filter(([topic]) => topic !== targetCareer)
+            .map(([topic, items], idx) => {
+              // Assign some distinct colors based on index to keep it colorful
+              const colors = ["text-rose-500", "text-indigo-500", "text-emerald-500", "text-blue-500", "text-purple-500"];
+              const colorClass = colors[idx % colors.length];
+              return (
+                <ResourceGroup 
+                  key={topic} 
+                  title={topic} 
+                  items={items} 
+                  icon="topic" 
+                  colorClass={colorClass} 
+                  defaultExpanded={true} 
+                />
+              );
+          })}
           
           {(!filteredResources || filteredResources.length === 0) && (
              <div className="text-center py-24 bg-white rounded-3xl border border-dashed border-slate-300 shadow-sm">

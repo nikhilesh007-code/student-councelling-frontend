@@ -25,9 +25,9 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 60 * 24, // 24 hours (data rarely changes unless profile updates)
+      staleTime: 1000 * 60 * 5, // 5 minutes
       gcTime: 1000 * 60 * 60 * 24, // 24 hours
-      refetchOnWindowFocus: false,
+      refetchOnWindowFocus: true,
     },
   },
 })
@@ -35,7 +35,7 @@ const queryClient = new QueryClient({
 // Setup Persister
 const persister = createSyncStoragePersister({
   storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-  key: 'STUDENT_COUNSELLING_QUERY_CACHE_V2',
+  key: 'STUDENT_COUNSELLING_QUERY_CACHE_V3',
 })
 
 export const Route = createRootRoute({

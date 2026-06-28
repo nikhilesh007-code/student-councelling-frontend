@@ -26,14 +26,11 @@ async function fetchProgressData() {
 }
 
 function ProgressTrackingPage() {
-  const context = useRouteContext({ strict: false }) as any;
-  const completionPercentage = context?.completionPercentage || 0;
-
   const { data: session } = authClient.useSession()
   const userId = session?.user?.id
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['progressData', 'v1', userId],
+    queryKey: ['progressData', 'v2', userId],
     queryFn: fetchProgressData,
     enabled: !!userId,
   })
@@ -82,18 +79,18 @@ function ProgressTrackingPage() {
         </div>
 
         {/* Overall Progress Dashboard (Top Row) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8 min-w-0">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 min-w-0">
           
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 min-w-0 hover:-translate-y-1 transition-transform">
             <div className="flex justify-between items-start mb-4">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white bg-blue-500">
                 <span className="material-symbols-outlined">person</span>
               </div>
-              <span className="text-[18px] font-black text-slate-900">{completionPercentage}%</span>
+              <span className="text-[18px] font-black text-slate-900">{dbData.profileCompletion}%</span>
             </div>
             <h3 className="text-[13px] font-extrabold text-slate-600 truncate">Profile Completion</h3>
             <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mt-3">
-              <div className="h-full bg-blue-500" style={{ width: `${completionPercentage}%` }}></div>
+              <div className="h-full bg-blue-500" style={{ width: `${dbData.profileCompletion}%` }}></div>
             </div>
           </div>
 
@@ -102,24 +99,11 @@ function ProgressTrackingPage() {
               <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white bg-[#00a878]">
                 <span className="material-symbols-outlined">target</span>
               </div>
-              <span className="text-[18px] font-black text-slate-900">{aiData.estimatedReadiness}%</span>
+              <span className="text-[18px] font-black text-slate-900">{dbData.readinessScore}%</span>
             </div>
-            <h3 className="text-[13px] font-extrabold text-slate-600 truncate">AI Estimated Readiness</h3>
+            <h3 className="text-[13px] font-extrabold text-slate-600 truncate">Career Readiness</h3>
             <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mt-3">
-              <div className="h-full bg-[#00a878]" style={{ width: `${aiData.estimatedReadiness}%` }}></div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 min-w-0 hover:-translate-y-1 transition-transform">
-            <div className="flex justify-between items-start mb-4">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white bg-purple-500">
-                <span className="material-symbols-outlined">school</span>
-              </div>
-              <span className="text-[18px] font-black text-slate-900">{dbData.roadmapProgress.percentage}%</span>
-            </div>
-            <h3 className="text-[13px] font-extrabold text-slate-600 truncate">Roadmap Progress</h3>
-            <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mt-3">
-              <div className="h-full bg-purple-500" style={{ width: `${dbData.roadmapProgress.percentage}%` }}></div>
+              <div className="h-full bg-[#00a878]" style={{ width: `${dbData.readinessScore}%` }}></div>
             </div>
           </div>
 
@@ -141,65 +125,48 @@ function ProgressTrackingPage() {
               </p>
             </div>
 
-            {/* Top Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 min-w-0">
+            {/* Recommended Learning Resources */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 min-w-0">
+              <h3 className="text-[16px] font-extrabold text-slate-900 flex items-center gap-2 mb-4">
+                <span className="material-symbols-outlined text-amber-500">local_library</span> 
+                Recommended Learning Resources
+              </h3>
               
-              {/* Roadmap Progress */}
-              <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 min-w-0">
-                <h3 className="text-[15px] font-extrabold text-slate-900 flex items-center gap-2 mb-4">
-                  <span className="material-symbols-outlined text-[#00a878]">map</span> Roadmap Milestones
-                </h3>
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="text-center shrink-0">
-                    <p className="text-[24px] font-black text-[#00a878]">{dbData.roadmapProgress.completed}<span className="text-[14px] text-slate-400">/{dbData.roadmapProgress.total}</span></p>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Milestones</p>
-                  </div>
-                  <div className="min-w-0 flex-1 border-l pl-4 border-slate-100">
-                    <p className="text-[11px] font-bold text-slate-400 uppercase mb-1">Current Milestone</p>
-                    <p className="text-[14px] font-extrabold text-slate-800 truncate">{dbData.roadmapProgress.currentMilestone}</p>
-                  </div>
-                </div>
-                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                  <div className="h-full bg-[#00a878]" style={{ width: `${dbData.roadmapProgress.percentage}%` }}></div>
-                </div>
-              </div>
-
-               {/* Applications Progress */}
-               <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 min-w-0 flex flex-col">
-                <h3 className="text-[15px] font-extrabold text-slate-900 mb-5 flex items-center gap-2">
-                  <span className="material-symbols-outlined text-purple-500">work</span> Applications Tracker
-                </h3>
-                <div className="flex-1 flex flex-col justify-center space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-500 border border-slate-200">
-                        <span className="material-symbols-outlined text-[18px]">send</span>
-                      </div>
-                      <span className="text-[13px] font-bold text-slate-700">Applied</span>
-                    </div>
-                    <span className="text-[16px] font-black text-slate-900">{dbData.applications.applied}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500 border border-blue-100">
-                        <span className="material-symbols-outlined text-[18px]">forum</span>
-                      </div>
-                      <span className="text-[13px] font-bold text-slate-700">Interviews</span>
-                    </div>
-                    <span className="text-[16px] font-black text-slate-900">{dbData.applications.interviews}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-[#00a878] border border-emerald-100">
-                        <span className="material-symbols-outlined text-[18px]">workspace_premium</span>
-                      </div>
-                      <span className="text-[13px] font-bold text-slate-700">Offers</span>
-                    </div>
-                    <span className="text-[16px] font-black text-slate-900">{dbData.applications.offers}</span>
+              {dbData.nextLearningSteps?.length > 0 ? (
+                <div>
+                  <p className="text-[13px] font-bold text-slate-500 mb-4">
+                    Based on your progress, you should focus on learning <span className="text-amber-600 font-extrabold">{dbData.focusAreas?.nextSkill || "Target Skills"}</span> next.
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {dbData.nextLearningSteps.map((resource: any, idx: number) => (
+                      <a
+                        key={idx}
+                        href={resource.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block bg-slate-50 border border-slate-100 hover:border-amber-200 hover:bg-amber-50 rounded-xl p-4 transition-all"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 rounded-lg bg-white shadow-sm flex items-center justify-center shrink-0 border border-slate-100">
+                            <span className="material-symbols-outlined text-amber-600">
+                              {resource.type === "Video" ? "play_circle" : "menu_book"}
+                            </span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[13px] font-bold text-slate-900 line-clamp-2 leading-snug mb-1">{resource.title}</p>
+                            <p className="text-[11px] font-medium text-slate-500 truncate">{resource.provider}</p>
+                          </div>
+                        </div>
+                      </a>
+                    ))}
                   </div>
                 </div>
-              </div>
-
+              ) : (
+                <div className="bg-slate-50 rounded-xl p-6 text-center border border-slate-100">
+                  <span className="material-symbols-outlined text-slate-400 text-3xl mb-2">check_circle</span>
+                  <p className="text-[14px] font-medium text-slate-600">You're all caught up! Keep building your profile to unlock new resources.</p>
+                </div>
+              )}
             </div>
 
             {/* Skill Progress */}
@@ -215,14 +182,6 @@ function ProgressTrackingPage() {
                       <span key={skill} className="bg-emerald-50 text-[#00a878] border border-emerald-100 px-2 py-0.5 rounded text-[10px] font-extrabold">{skill}</span>
                     )) : <span className="text-slate-400 text-sm">No skills added yet.</span>}
                     {dbData.learnedSkills.length > 10 && <span className="text-[10px] text-slate-400 font-bold px-1 py-0.5">+{dbData.learnedSkills.length - 10}</span>}
-                  </div>
-                </div>
-                <div>
-                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-2">In Progress ({dbData.inProgressSkills.length})</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {dbData.inProgressSkills.length > 0 ? dbData.inProgressSkills.map((skill: string) => (
-                      <span key={skill} className="bg-blue-50 text-blue-600 border border-blue-100 px-2 py-0.5 rounded text-[10px] font-extrabold">{skill}</span>
-                    )) : <span className="text-slate-400 text-sm">No active milestones.</span>}
                   </div>
                 </div>
                 <div>
@@ -251,15 +210,15 @@ function ProgressTrackingPage() {
               <div className="space-y-4 relative z-10">
                 <div className="bg-white/5 border border-white/10 rounded-xl p-4">
                   <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mb-1">Top Strength</p>
-                  <p className="text-[15px] font-black text-emerald-400">{aiData.topStrength}</p>
+                  <p className="text-[15px] font-black text-emerald-400">{dbData.focusAreas?.topStrength || "Not available"}</p>
                 </div>
                 <div className="bg-white/5 border border-white/10 rounded-xl p-4">
                   <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mb-1">Critical Weakness</p>
-                  <p className="text-[15px] font-black text-amber-400">{aiData.topWeakness}</p>
+                  <p className="text-[15px] font-black text-amber-400">{dbData.focusAreas?.criticalWeakness || "Not available"}</p>
                 </div>
                 <div className="bg-white/5 border border-white/10 rounded-xl p-4">
                   <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider mb-1">Next Skill Target</p>
-                  <p className="text-[15px] font-black text-blue-400">{aiData.nextSkill}</p>
+                  <p className="text-[15px] font-black text-blue-400">{dbData.focusAreas?.nextSkill || "Not available"}</p>
                 </div>
               </div>
             </div>
@@ -271,7 +230,7 @@ function ProgressTrackingPage() {
                 Detailed Insights
               </h3>
               <ul className="space-y-4">
-                {aiData?.insights?.map((insight: string, idx: number) => (
+                {aiData?.recommendations?.map((insight: string, idx: number) => (
                   <li key={idx} className="flex items-start gap-3">
                     <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5 shrink-0"></div>
                     <p className="text-[13px] font-medium text-slate-700 leading-relaxed">{insight}</p>
@@ -280,16 +239,7 @@ function ProgressTrackingPage() {
               </ul>
             </div>
 
-            {/* Weekly Recommendation */}
-            <div className="bg-amber-50 rounded-2xl p-6 shadow-sm border border-amber-100 min-w-0">
-              <h3 className="text-[16px] font-extrabold text-amber-900 flex items-center gap-2 mb-3">
-                <span className="material-symbols-outlined text-amber-500">calendar_today</span> 
-                Weekly Recommendation
-              </h3>
-              <p className="text-[14px] font-medium text-amber-800 leading-relaxed bg-white/50 p-4 rounded-xl border border-amber-200/50">
-                {aiData.weeklyRecommendation}
-              </p>
-            </div>
+
 
           </div>
         </div>

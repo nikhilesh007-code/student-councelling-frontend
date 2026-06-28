@@ -15,26 +15,31 @@ export type ProfileData = {
 export function calculateProfileCompletion(profile: ProfileData | null, sessionUser: { name?: string | null, email?: string | null } | null): number {
   if (!profile && !sessionUser) return 0;
   
-  const fields = [
-    sessionUser?.name || profile?.name,
-    sessionUser?.email,
-    profile?.phone,
-    profile?.bio,
-    profile?.careerGoal,
-    profile?.linkedin,
-    profile?.github,
-    profile?.branch,
-    profile?.cgpa ? String(profile.cgpa) : undefined
-  ];
+  // Core fields: Max 80%
+  // 1. Name, 2. Email, 3. Branch, 4. Career Goal, 5. Skills, 6. Interests
+  let coreFilled = 0;
+  if (sessionUser?.name || profile?.name) coreFilled++;
+  if (sessionUser?.email) coreFilled++;
+  if (profile?.branch && profile.branch.trim() !== '') coreFilled++;
+  if (profile?.careerGoal && profile.careerGoal.trim() !== '') coreFilled++;
+  if (profile?.skills && (Array.isArray(profile.skills) ? profile.skills.length > 0 : (typeof profile.skills === 'string' && profile.skills.trim() !== ''))) coreFilled++;
+  if (profile?.interests && (Array.isArray(profile.interests) ? profile.interests.length > 0 : (typeof profile.interests === 'string' && profile.interests.trim() !== ''))) coreFilled++;
+
+  const coreScore = (coreFilled / 6) * 80; // 6 core fields = 80%
+
+  // Optional fields: Max 20%
+  // 1. Phone, 2. Bio, 3. LinkedIn, 4. GitHub, 5. CGPA, 6. Year
+  let optionalFilled = 0;
+  if (profile?.phone && profile.phone.trim() !== '') optionalFilled++;
+  if (profile?.bio && profile.bio.trim() !== '') optionalFilled++;
+  if (profile?.linkedin && profile.linkedin.trim() !== '') optionalFilled++;
+  if (profile?.github && profile.github.trim() !== '') optionalFilled++;
+  if (profile?.cgpa) optionalFilled++;
+  if (profile?.year) optionalFilled++;
+
+  const optionalScore = (optionalFilled / 6) * 20; // 6 optional fields = 20%
   
-  let filledCount = fields.filter(f => f !== undefined && f !== null && String(f).trim() !== '').length;
-  
-  if (profile?.skills && (Array.isArray(profile.skills) ? profile.skills.length > 0 : (typeof profile.skills === 'string' && profile.skills.trim() !== ''))) {
-    filledCount++;
-  }
-  
-  // Total fields = 9 simple + 1 array = 10
-  return Math.round((filledCount / 10) * 100);
+  return Math.min(100, Math.round(coreScore + optionalScore));
 }
 
 export function hasMissingMandatoryFields(profile: ProfileData | null): boolean {

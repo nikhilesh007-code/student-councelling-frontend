@@ -82,6 +82,7 @@ function AssessmentPage() {
         skillGap: skillGapRes,
         guidanceMeta: guidanceRes._meta
       });
+      queryClient.invalidateQueries({ queryKey: ['progressData'] });
     } catch (e) {
       console.error(e);
     } finally {

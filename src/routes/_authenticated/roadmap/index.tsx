@@ -100,6 +100,7 @@ function RoadmapPage() {
         queryClient.setQueryData(['roadmap', userId, profileData?.updatedAt], json);
         await queryClient.invalidateQueries({ queryKey: ['roadmapProgress'] });
         await queryClient.invalidateQueries({ queryKey: ['roadmapAnalysis'] });
+        await queryClient.invalidateQueries({ queryKey: ['progressData'] });
       }
     } catch (e) {
       console.error(e);
@@ -121,6 +122,7 @@ function RoadmapPage() {
         await queryClient.invalidateQueries({ queryKey: ['roadmap', userId] });
         await refetchRoadmap();
         await refetchProgress();
+        await queryClient.invalidateQueries({ queryKey: ['progressData'] });
         if (status === 'COMPLETED') {
           showToast(`Phase ${phaseId + 1} completed successfully! 🎉`);
           setExpandedPhases(prev => ({ ...prev, [phaseId + 1]: true }));

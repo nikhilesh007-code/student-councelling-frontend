@@ -124,28 +124,17 @@ function ProfilePage() {
         preferredDomains: p.preferredDomains || [],
         projects: p.projects || [],
         certifications: p.certifications || [],
+        completionInfo: p.completionInfo || { percentage: 0, missingFields: [], completedFields: [] }
       };
 
-      setProfile(loadedProfile)
-      setFormData(loadedProfile)
+      setProfile(loadedProfile as any)
+      setFormData(loadedProfile as any)
       setIsLoading(false)
     }
   }, [context?.profile])
 
-  const completionPercentage = calculateProfileCompletion(profile, { name: userName, email: userEmail }) || 0;
-
-  const missingSections = [];
-  if (!profile.careerGoal) missingSections.push("Career Goal");
-  if (profile.userType === 'Student' && (!profile.university || !profile.degree)) missingSections.push("Education Details");
-  if (profile.userType === 'Working Professional' && (!profile.currentJobTitle || !profile.companyName)) missingSections.push("Current Job Details");
-  if (!profile.skills || profile.skills.length === 0) missingSections.push("Technical Skills");
-  if (!profile.interests || profile.interests.length === 0) missingSections.push("Professional Interests");
-  if (!profile.linkedin && !profile.github) missingSections.push("Social Links");
-  if (!profile.projects || profile.projects.length === 0) missingSections.push("Portfolio Projects");
-  if (!profile.certifications || profile.certifications.length === 0) missingSections.push("Certifications");
-  
-  // Suggest Resume Upload if they have multiple missing core fields
-  if (missingSections.length > 1) missingSections.push("Resume Upload (Recommended)");
+  const completionPercentage = (profile as any).completionInfo?.percentage || 0;
+  const missingSections = (profile as any).completionInfo?.missingFields || [];
 
 
   const handleSave = async () => {
@@ -176,13 +165,14 @@ function ProfilePage() {
       const result = await response.json();
       if (!result.success) throw new Error("Profile update failed");
 
-      setProfile({ ...defaultProfile, ...result.data, skills: formData.skills, interests: formData.interests, preferredDomains: formData.preferredDomains, projects: formData.projects, certifications: formData.certifications });
-      setFormData({ ...defaultProfile, ...result.data, skills: formData.skills, interests: formData.interests, preferredDomains: formData.preferredDomains, projects: formData.projects, certifications: formData.certifications });
+      setProfile({ ...defaultProfile, ...result.data, skills: formData.skills, interests: formData.interests, preferredDomains: formData.preferredDomains, projects: formData.projects, certifications: formData.certifications, completionInfo: result.data.completionInfo });
+      setFormData({ ...defaultProfile, ...result.data, skills: formData.skills, interests: formData.interests, preferredDomains: formData.preferredDomains, projects: formData.projects, certifications: formData.certifications, completionInfo: result.data.completionInfo });
       
       await queryClient.invalidateQueries({ queryKey: ['recommendations'] });
       await queryClient.invalidateQueries({ queryKey: ['assessment-data'] });
       await queryClient.invalidateQueries({ queryKey: ['roadmap'] });
       await queryClient.invalidateQueries({ queryKey: ['roadmapProgress'] });
+      await queryClient.invalidateQueries({ queryKey: ['progressData'] });
 
       setIsEditing(false)
       toast.success('Profile updated successfully!')
@@ -429,29 +419,7 @@ function ProfilePage() {
 
         </div>
 
-        {isEditing && (
-          <Card className="border-emerald-200 bg-emerald-50/50 shadow-sm overflow-hidden relative">
-            <div className="absolute right-0 top-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
-            <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
-              <div className="flex items-start gap-4">
-                <div className="p-3 bg-emerald-100 rounded-lg shrink-0">
-                   <Sparkles className="w-6 h-6 text-emerald-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-emerald-900 tracking-tight">Smart Resume Parsing</h3>
-                  <p className="text-emerald-700/80 mt-1 max-w-xl">Upload your latest resume to automatically extract your skills, domains, and professional experience using Gemini AI.</p>
-                </div>
-              </div>
-              <div className="shrink-0 w-full md:w-auto">
-                <input type="file" accept=".pdf,.docx" className="hidden" ref={fileInputRef} onChange={handleResumeUpload} />
-                <Button className="w-full md:w-auto bg-indigo-600 hover:bg-indigo-700 text-white shadow-md" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
-                  <UploadCloud className="w-4 h-4 mr-2" />
-                  {isUploading ? "Extracting..." : "Upload Resume (PDF/DOCX)"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           
