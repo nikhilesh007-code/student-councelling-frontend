@@ -83,6 +83,7 @@ function AssessmentPage() {
         guidanceMeta: guidanceRes._meta
       });
       queryClient.invalidateQueries({ queryKey: ['progressData'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     } catch (e) {
       console.error(e);
     } finally {

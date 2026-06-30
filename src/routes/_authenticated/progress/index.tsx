@@ -25,6 +25,66 @@ async function fetchProgressData() {
   return res.json()
 }
 
+function getReadinessData(score: number | null | undefined) {
+  if (score == null || Number.isNaN(score) || !Number.isFinite(score) || score <= 0) {
+    return null;
+  }
+
+  // Handle cases where the AI returns a fraction (e.g. 0.85) instead of a percentage (85)
+  let normalizedScore = score;
+  if (normalizedScore > 0 && normalizedScore <= 1.0) {
+    normalizedScore = normalizedScore * 100;
+  }
+
+  const clamped = Math.min(100, Math.max(0, normalizedScore));
+  
+  let text = '';
+  if (clamped < 1) {
+    text = '<1%';
+  } else if (clamped < 10) {
+    text = `${clamped.toFixed(1)}%`;
+  } else {
+    text = `${Math.round(clamped)}%`;
+  }
+
+  let status = '';
+  let colorClass = '';
+  let bgClass = '';
+
+  if (clamped <= 20) {
+    status = 'Needs Improvement';
+    colorClass = 'text-red-500';
+    bgClass = 'bg-red-500';
+  } else if (clamped <= 40) {
+    status = 'Getting Started';
+    colorClass = 'text-orange-500';
+    bgClass = 'bg-orange-500';
+  } else if (clamped <= 60) {
+    status = 'Improving';
+    colorClass = 'text-amber-500';
+    bgClass = 'bg-amber-400';
+  } else if (clamped <= 80) {
+    status = 'Good Progress';
+    colorClass = 'text-[#00a878]';
+    bgClass = 'bg-[#00a878]';
+  } else {
+    status = 'Career Ready';
+    colorClass = 'text-emerald-500';
+    bgClass = 'bg-emerald-500';
+  }
+
+  const visualWidth = clamped > 0 && clamped < 5 ? 5 : clamped;
+
+  return {
+    value: clamped,
+    text,
+    status,
+    colorClass,
+    bgClass,
+    visualWidth
+  };
+}
+
 function ProgressTrackingPage() {
   const { data: session } = authClient.useSession()
   const userId = session?.user?.id
@@ -81,31 +141,58 @@ function ProgressTrackingPage() {
         {/* Overall Progress Dashboard (Top Row) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 min-w-0">
           
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 min-w-0 hover:-translate-y-1 transition-transform">
-            <div className="flex justify-between items-start mb-4">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white bg-blue-500">
-                <span className="material-symbols-outlined">person</span>
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 min-w-0 hover:-translate-y-1 transition-transform h-full flex flex-col justify-between">
+            <div>
+              <div className="flex justify-between items-start mb-4">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white bg-blue-500">
+                  <span className="material-symbols-outlined">person</span>
+                </div>
+                <span className="text-[18px] font-black text-slate-900">{dbData.profileCompletion}%</span>
               </div>
-              <span className="text-[18px] font-black text-slate-900">{dbData.profileCompletion}%</span>
+              <h3 className="text-[13px] font-extrabold text-slate-600 truncate">Profile Completion</h3>
             </div>
-            <h3 className="text-[13px] font-extrabold text-slate-600 truncate">Profile Completion</h3>
             <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mt-3">
               <div className="h-full bg-blue-500" style={{ width: `${dbData.profileCompletion}%` }}></div>
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 min-w-0 hover:-translate-y-1 transition-transform">
-            <div className="flex justify-between items-start mb-4">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white bg-[#00a878]">
-                <span className="material-symbols-outlined">target</span>
+          {(() => {
+            const readiness = getReadinessData(dbData.readinessScore);
+            
+            if (!readiness) {
+              return (
+                <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 min-w-0 hover:-translate-y-1 transition-transform flex flex-col justify-center h-full">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-400 bg-slate-100">
+                      <span className="material-symbols-outlined">target</span>
+                    </div>
+                    <h3 className="text-[15px] font-extrabold text-slate-900">Career Readiness</h3>
+                  </div>
+                  <p className="text-[13px] font-medium text-slate-500">Run Skill Gap Analysis to generate your readiness score.</p>
+                </div>
+              );
+            }
+
+            return (
+              <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 min-w-0 hover:-translate-y-1 transition-transform h-full flex flex-col justify-between">
+                <div>
+                  <div className="flex justify-between items-start mb-4">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white ${readiness.bgClass}`}>
+                      <span className="material-symbols-outlined">target</span>
+                    </div>
+                    <span className={`text-[18px] font-black ${readiness.colorClass}`}>{readiness.text}</span>
+                  </div>
+                  <h3 className="text-[13px] font-extrabold text-slate-600 truncate">Career Readiness</h3>
+                </div>
+                <div>
+                  <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mt-3 mb-2">
+                    <div className={`h-full ${readiness.bgClass} transition-all duration-500 ease-out`} style={{ width: `${readiness.visualWidth}%` }}></div>
+                  </div>
+                  <p className={`text-[11px] font-bold ${readiness.colorClass}`}>{readiness.status}</p>
+                </div>
               </div>
-              <span className="text-[18px] font-black text-slate-900">{dbData.readinessScore}%</span>
-            </div>
-            <h3 className="text-[13px] font-extrabold text-slate-600 truncate">Career Readiness</h3>
-            <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden mt-3">
-              <div className="h-full bg-[#00a878]" style={{ width: `${dbData.readinessScore}%` }}></div>
-            </div>
-          </div>
+            );
+          })()}
 
         </div>
 

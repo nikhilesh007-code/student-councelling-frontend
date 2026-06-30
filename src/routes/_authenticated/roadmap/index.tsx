@@ -101,6 +101,7 @@ function RoadmapPage() {
         await queryClient.invalidateQueries({ queryKey: ['roadmapProgress'] });
         await queryClient.invalidateQueries({ queryKey: ['roadmapAnalysis'] });
         await queryClient.invalidateQueries({ queryKey: ['progressData'] });
+        await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       }
     } catch (e) {
       console.error(e);
@@ -120,9 +121,10 @@ function RoadmapPage() {
       
       if (res.ok) {
         await queryClient.invalidateQueries({ queryKey: ['roadmap', userId] });
-        await refetchRoadmap();
-        await refetchProgress();
+        // The API returns the updated global progress summary. Update the context cache too if needed.
+        // For simplicity, we just invalidate progressData so the wrapper refetches.
         await queryClient.invalidateQueries({ queryKey: ['progressData'] });
+        await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
         if (status === 'COMPLETED') {
           showToast(`Phase ${phaseId + 1} completed successfully! 🎉`);
           setExpandedPhases(prev => ({ ...prev, [phaseId + 1]: true }));

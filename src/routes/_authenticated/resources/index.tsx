@@ -169,9 +169,9 @@ function ResourcesPage() {
 
   // Summary Metrics
   const totalResources = mappedResources.length;
-  const totalVideos = mappedResources.filter(r => r.type === "Video").length;
-  const totalCourses = mappedResources.filter(r => r.type === "Course").length;
-  const totalDocs = mappedResources.filter(r => r.type === "Official Docs").length;
+  const totalVideos = mappedResources.filter((r: any) => r.type === "Video").length;
+  const totalCourses = mappedResources.filter((r: any) => r.type === "Course").length;
+  const totalDocs = mappedResources.filter((r: any) => r.type === "Official Docs").length;
 
   const groupedResources = useMemo(() => {
     const groups: Record<string, any[]> = {};

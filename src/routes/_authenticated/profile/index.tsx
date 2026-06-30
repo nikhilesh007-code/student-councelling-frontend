@@ -173,6 +173,7 @@ function ProfilePage() {
       await queryClient.invalidateQueries({ queryKey: ['roadmap'] });
       await queryClient.invalidateQueries({ queryKey: ['roadmapProgress'] });
       await queryClient.invalidateQueries({ queryKey: ['progressData'] });
+      await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
 
       setIsEditing(false)
       toast.success('Profile updated successfully!')
@@ -347,7 +348,7 @@ function ProfilePage() {
                     <div className="text-sm text-slate-600">
                       <p className="font-semibold mb-2 text-slate-700">Missing:</p>
                       <ul className="space-y-1 mb-3">
-                        {missingSections.map((section, idx) => (
+                        {missingSections.map((section: string, idx: number) => (
                           <li key={idx} className="flex items-center gap-2">
                             <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
                             {section}

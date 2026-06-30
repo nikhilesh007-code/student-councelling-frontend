@@ -40,17 +40,24 @@ function ResetPassword() {
 
     setIsLoading(true)
 
-    const { data, error: resetError } = await authClient.resetPassword({ 
-      newPassword: password,
-      token
-    })
-    
-    setIsLoading(false)
-    
-    if (resetError) {
-      setError(resetError.message || 'Failed to reset password.')
-    } else {
-      setSuccess('Your password has been successfully reset.')
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/auth/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, newPassword: password })
+      });
+      const data = await res.json();
+      
+      setIsLoading(false);
+      
+      if (!res.ok) {
+        setError(data.error || 'Failed to reset password.');
+      } else {
+        setSuccess(data.message || 'Your password has been successfully reset.');
+      }
+    } catch (err: any) {
+      setIsLoading(false);
+      setError('An unexpected error occurred. Please try again.');
     }
   }
 

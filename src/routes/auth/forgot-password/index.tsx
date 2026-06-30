@@ -20,18 +20,24 @@ function ForgotPassword() {
     setSuccess('')
     setIsLoading(true)
 
-    // @ts-ignore - forgetPassword hits /forget-password which is 404, requestPasswordReset is the correct API endpoint
-    const { data, error: forgotError } = await authClient.requestPasswordReset({ 
-      email,
-      redirectTo: `${window.location.origin}/auth/reset-password`
-    })
-    
-    setIsLoading(false)
-    
-    if (forgotError) {
-      setError(forgotError.message || 'Failed to send reset link')
-    } else {
-      setSuccess('If an account exists, a password reset link has been sent to your email.')
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await res.json();
+      
+      setIsLoading(false);
+      
+      if (!res.ok) {
+        setError(data.error || 'Failed to send reset link');
+      } else {
+        setSuccess(data.message || 'If an account exists, a password reset link has been sent to your email.');
+      }
+    } catch (err: any) {
+      setIsLoading(false);
+      setError('An unexpected error occurred. Please try again.');
     }
   }
 

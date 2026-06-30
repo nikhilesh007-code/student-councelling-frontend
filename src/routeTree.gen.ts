@@ -28,7 +28,7 @@ import { Route as AuthenticatedProfileIndexRouteImport } from './routes/_authent
 import { Route as AuthenticatedPlannerIndexRouteImport } from './routes/_authenticated/planner/index'
 import { Route as AuthenticatedPlacementIndexRouteImport } from './routes/_authenticated/placement/index'
 import { Route as AuthenticatedOpportunitiesIndexRouteImport } from './routes/_authenticated/opportunities/index'
-import { Route as AuthenticatedMentorshipIndexRouteImport } from './routes/_authenticated/mentorship/index'
+import { Route as AuthenticatedNotificationsIndexRouteImport } from './routes/_authenticated/notifications/index'
 import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard/index'
 import { Route as AuthenticatedAssessmentIndexRouteImport } from './routes/_authenticated/assessment/index'
 import { Route as AuthenticatedProfileIndexWorkingRouteImport } from './routes/_authenticated/profile/index.working'
@@ -137,10 +137,10 @@ const AuthenticatedOpportunitiesIndexRoute =
     path: '/opportunities/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
-const AuthenticatedMentorshipIndexRoute =
-  AuthenticatedMentorshipIndexRouteImport.update({
-    id: '/mentorship/',
-    path: '/mentorship/',
+const AuthenticatedNotificationsIndexRoute =
+  AuthenticatedNotificationsIndexRouteImport.update({
+    id: '/notifications/',
+    path: '/notifications/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
 const AuthenticatedDashboardIndexRoute =
@@ -174,7 +174,7 @@ export interface FileRoutesByFullPath {
   '/home': typeof PublicHomeRoute
   '/assessment/': typeof AuthenticatedAssessmentIndexRoute
   '/dashboard/': typeof AuthenticatedDashboardIndexRoute
-  '/mentorship/': typeof AuthenticatedMentorshipIndexRoute
+  '/notifications/': typeof AuthenticatedNotificationsIndexRoute
   '/opportunities/': typeof AuthenticatedOpportunitiesIndexRoute
   '/placement/': typeof AuthenticatedPlacementIndexRoute
   '/planner/': typeof AuthenticatedPlannerIndexRoute
@@ -197,7 +197,7 @@ export interface FileRoutesByTo {
   '/home': typeof PublicHomeRoute
   '/assessment': typeof AuthenticatedAssessmentIndexRoute
   '/dashboard': typeof AuthenticatedDashboardIndexRoute
-  '/mentorship': typeof AuthenticatedMentorshipIndexRoute
+  '/notifications': typeof AuthenticatedNotificationsIndexRoute
   '/opportunities': typeof AuthenticatedOpportunitiesIndexRoute
   '/placement': typeof AuthenticatedPlacementIndexRoute
   '/planner': typeof AuthenticatedPlannerIndexRoute
@@ -224,7 +224,7 @@ export interface FileRoutesById {
   '/_public/home': typeof PublicHomeRoute
   '/_authenticated/assessment/': typeof AuthenticatedAssessmentIndexRoute
   '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
-  '/_authenticated/mentorship/': typeof AuthenticatedMentorshipIndexRoute
+  '/_authenticated/notifications/': typeof AuthenticatedNotificationsIndexRoute
   '/_authenticated/opportunities/': typeof AuthenticatedOpportunitiesIndexRoute
   '/_authenticated/placement/': typeof AuthenticatedPlacementIndexRoute
   '/_authenticated/planner/': typeof AuthenticatedPlannerIndexRoute
@@ -250,7 +250,7 @@ export interface FileRouteTypes {
     | '/home'
     | '/assessment/'
     | '/dashboard/'
-    | '/mentorship/'
+    | '/notifications/'
     | '/opportunities/'
     | '/placement/'
     | '/planner/'
@@ -273,7 +273,7 @@ export interface FileRouteTypes {
     | '/home'
     | '/assessment'
     | '/dashboard'
-    | '/mentorship'
+    | '/notifications'
     | '/opportunities'
     | '/placement'
     | '/planner'
@@ -299,7 +299,7 @@ export interface FileRouteTypes {
     | '/_public/home'
     | '/_authenticated/assessment/'
     | '/_authenticated/dashboard/'
-    | '/_authenticated/mentorship/'
+    | '/_authenticated/notifications/'
     | '/_authenticated/opportunities/'
     | '/_authenticated/placement/'
     | '/_authenticated/planner/'
@@ -463,11 +463,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOpportunitiesIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
-    '/_authenticated/mentorship/': {
-      id: '/_authenticated/mentorship/'
-      path: '/mentorship'
-      fullPath: '/mentorship/'
-      preLoaderRoute: typeof AuthenticatedMentorshipIndexRouteImport
+    '/_authenticated/notifications/': {
+      id: '/_authenticated/notifications/'
+      path: '/notifications'
+      fullPath: '/notifications/'
+      preLoaderRoute: typeof AuthenticatedNotificationsIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/dashboard/': {
@@ -518,7 +518,7 @@ const AuthenticatedDashboardRouteWithChildren =
 interface AuthenticatedRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRouteWithChildren
   AuthenticatedAssessmentIndexRoute: typeof AuthenticatedAssessmentIndexRoute
-  AuthenticatedMentorshipIndexRoute: typeof AuthenticatedMentorshipIndexRoute
+  AuthenticatedNotificationsIndexRoute: typeof AuthenticatedNotificationsIndexRoute
   AuthenticatedOpportunitiesIndexRoute: typeof AuthenticatedOpportunitiesIndexRoute
   AuthenticatedPlacementIndexRoute: typeof AuthenticatedPlacementIndexRoute
   AuthenticatedPlannerIndexRoute: typeof AuthenticatedPlannerIndexRoute
@@ -536,7 +536,7 @@ interface AuthenticatedRouteChildren {
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRouteWithChildren,
   AuthenticatedAssessmentIndexRoute: AuthenticatedAssessmentIndexRoute,
-  AuthenticatedMentorshipIndexRoute: AuthenticatedMentorshipIndexRoute,
+  AuthenticatedNotificationsIndexRoute: AuthenticatedNotificationsIndexRoute,
   AuthenticatedOpportunitiesIndexRoute: AuthenticatedOpportunitiesIndexRoute,
   AuthenticatedPlacementIndexRoute: AuthenticatedPlacementIndexRoute,
   AuthenticatedPlannerIndexRoute: AuthenticatedPlannerIndexRoute,
