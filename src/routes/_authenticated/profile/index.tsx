@@ -4,6 +4,7 @@ import { DashboardLayout } from '../../../components/layout/DashboardLayout'
 import { useState, useEffect, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { calculateProfileCompletion } from '../../../lib/profile-utils'
+import { motion, AnimatePresence } from 'framer-motion'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../../../components/ui/card"
 import { Badge } from "../../../components/ui/badge"
@@ -18,7 +19,7 @@ import {
   UploadCloud, Plus, Trash2, Check, ChevronsUpDown, 
   User, Briefcase, GraduationCap, Sparkles, Code, 
   Link as LinkIcon, Target, Trophy, FileText, Award, Layers,
-  Medal
+  Medal, Pencil
 } from 'lucide-react'
 import { Popover, PopoverContent, PopoverTrigger } from "../../../components/ui/popover"
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../../../components/ui/command"
@@ -27,6 +28,134 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 export const Route = createFileRoute('/_authenticated/profile/')({
   component: ProfilePage,
 })
+function AnimatedNumber({ value }: { value: number }) {
+  const [display, setDisplay] = useState(0)
+
+  useEffect(() => {
+    let start = 0
+    const duration = 800
+    const startTime = performance.now()
+
+    const step = (now: number) => {
+      const progress = Math.min((now - startTime) / duration, 1)
+      setDisplay(Math.floor(progress * value))
+      if (progress < 1) requestAnimationFrame(step)
+    }
+    requestAnimationFrame(step)
+  }, [value])
+
+  return <>{display}</>
+}
+
+// ---------------- Animation helpers ----------------
+
+/** Cross-fades content when switching between view mode and edit mode */
+function ModeSwitch({ editKey, children }: { editKey: string | boolean; children: React.ReactNode }) {
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={String(editKey)}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10 }}
+        transition={{ duration: 0.22, ease: 'easeOut' }}
+      >
+        {children}
+      </motion.div>
+    </AnimatePresence>
+  )
+}
+
+/** Slim animated banner shown while editing is active */
+function EditModeBanner() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, height: 0, y: -10 }}
+      animate={{ opacity: 1, height: 'auto', y: 0 }}
+      exit={{ opacity: 0, height: 0, y: -10 }}
+      transition={{ duration: 0.3, ease: 'easeOut' }}
+      className="overflow-hidden"
+    >
+      <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-emerald-500 via-emerald-400 to-emerald-500 bg-[length:200%_100%] px-4 py-2.5 flex items-center gap-2 shadow-sm">
+        <motion.div
+          animate={{ backgroundPositionX: ['0%', '100%'] }}
+          transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent bg-[length:200%_100%]"
+        />
+        <motion.span
+          animate={{ scale: [1, 1.3, 1] }}
+          transition={{ duration: 1.2, repeat: Infinity }}
+          className="w-2 h-2 rounded-full bg-white relative z-10"
+        />
+        <span className="text-white text-sm font-bold relative z-10">Edit Mode Active — your changes aren't saved yet</span>
+      </div>
+    </motion.div>
+  )
+}
+
+const CONFETTI_COLORS = ['#00a878', '#fbbf24', '#60a5fa', '#f472b6', '#a78bfa']
+
+/** Confetti burst used once, on a successful save */
+function Confetti({ trigger }: { trigger: number }) {
+  const pieces = Array.from({ length: 24 }).map((_, i) => ({
+    id: `${trigger}-${i}`,
+    x: (Math.random() - 0.5) * 320,
+    rotate: Math.random() * 600 - 300,
+    color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+    delay: Math.random() * 0.15,
+    size: 6 + Math.random() * 6,
+    round: Math.random() > 0.5,
+  }))
+
+  if (!trigger) return null
+
+  return (
+    <div className="pointer-events-none fixed inset-0 z-[999] overflow-hidden">
+      <AnimatePresence>
+        {pieces.map((p) => (
+          <motion.span
+            key={p.id}
+            initial={{ opacity: 1, top: '-5%', left: `calc(50% + ${p.x}px)`, rotate: 0 }}
+            animate={{ opacity: [1, 1, 0], top: '105%', rotate: p.rotate }}
+            transition={{ duration: 1.4 + Math.random() * 0.6, delay: p.delay, ease: [0.2, 0.6, 0.4, 1] }}
+            style={{
+              position: 'absolute',
+              width: p.size,
+              height: p.size,
+              backgroundColor: p.color,
+              borderRadius: p.round ? '50%' : '2px',
+            }}
+          />
+        ))}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+function CelebrationToast({ show, text }: { show: boolean; text: string }) {
+  return (
+    <AnimatePresence>
+      {show && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.4, y: -30 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.6, y: -20 }}
+          transition={{ type: 'spring', stiffness: 320, damping: 16 }}
+          className="fixed top-20 left-1/2 -translate-x-1/2 z-[1000] bg-white shadow-2xl border-2 border-emerald-200 rounded-2xl px-7 py-4 flex items-center gap-3"
+        >
+          <motion.span
+            animate={{ rotate: [0, -15, 15, -10, 0], scale: [1, 1.2, 1] }}
+            transition={{ duration: 0.7 }}
+            className="text-3xl"
+          >
+            🎉
+          </motion.span>
+          <span className="font-extrabold text-slate-900 text-lg whitespace-nowrap">{text}</span>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+}
 
 const CAREER_GOALS = [
   "Frontend Developer", "Backend Developer", "Full Stack Developer", "AI Engineer", 
@@ -92,9 +221,14 @@ function ProfilePage() {
   const [formData, setFormData] = useState<ProfileData>(defaultProfile)
   const [isEditing, setIsEditing] = useState(false)
   const [isLoading, setIsLoading] = useState(!context?.profile)
+  const [animateBar, setAnimateBar] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   
   const [careerGoalOpen, setCareerGoalOpen] = useState(false)
+
+  // Celebration effect state
+  const [confettiTrigger, setConfettiTrigger] = useState(0)
+  const [showCelebration, setShowCelebration] = useState(false)
 
 // Resume Upload State
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -135,6 +269,10 @@ function ProfilePage() {
 
   const completionPercentage = (profile as any).completionInfo?.percentage || 0;
   const missingSections = (profile as any).completionInfo?.missingFields || [];
+  useEffect(() => {
+  const timer = setTimeout(() => setAnimateBar(true), 100)
+  return () => clearTimeout(timer)
+}, [completionPercentage])
 
 
   const handleSave = async () => {
@@ -178,6 +316,11 @@ function ProfilePage() {
       setIsEditing(false)
       toast.success('Profile updated successfully!')
       router.invalidate() 
+
+      // Celebrate the successful save
+      setConfettiTrigger((t) => t + 1)
+      setShowCelebration(true)
+      setTimeout(() => setShowCelebration(false), 2200)
     } catch (err) {
       toast.error('An error occurred while saving.')
     } finally {
@@ -303,31 +446,69 @@ function ProfilePage() {
     )
   }
 
+  const cardEditRing = isEditing ? 'ring-2 ring-emerald-300/60' : 'ring-0'
+
   return (
     <DashboardLayout>
+      <Confetti trigger={confettiTrigger} />
+      <CelebrationToast show={showCelebration} text="Profile Updated!" />
+
       <div className="flex flex-col gap-6 w-full max-w-full min-w-0 pb-12">
+
+        {/* Edit Mode Banner */}
+        <AnimatePresence>
+          {isEditing && <EditModeBanner key="edit-banner" />}
+        </AnimatePresence>
         
         {/* Header Section */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
-              <User className="w-8 h-8 text-primary" />
+              <motion.span
+                animate={isEditing ? { rotate: [0, -8, 8, -4, 0] } : { rotate: 0 }}
+                transition={{ duration: 0.5 }}
+              >
+                <User className="w-8 h-8 text-primary" />
+              </motion.span>
               My Profile
             </h1>
             <p className="text-muted-foreground mt-1 text-lg">Manage your personal and professional identity.</p>
           </div>
-          {!isEditing ? (
-            <Button size="lg" className="shadow-md hover:shadow-lg transition-all" onClick={() => setIsEditing(true)}>
-              <FileText className="w-4 h-4 mr-2" /> Edit Profile
-            </Button>
-          ) : (
-            <div className="flex items-center gap-3">
-              <Button variant="outline" size="lg" onClick={() => { setIsEditing(false); setFormData(profile); }}>Cancel</Button>
-              <Button size="lg" className="bg-emerald-500 hover:bg-emerald-600 text-white" onClick={handleSave} disabled={isSaving}>
-                {isSaving ? 'Saving...' : 'Save Changes'}
-              </Button>
-            </div>
-          )}
+          <AnimatePresence mode="wait">
+            {!isEditing ? (
+              <motion.div
+                key="edit-btn"
+                initial={{ opacity: 0, scale: 0.85 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.85 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+              >
+                <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.94 }}>
+                  <Button size="lg" className="shadow-md hover:shadow-lg transition-all" onClick={() => setIsEditing(true)}>
+                    <FileText className="w-4 h-4 mr-2" /> Edit Profile
+                  </Button>
+                </motion.div>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="save-btns"
+                initial={{ opacity: 0, scale: 0.85, x: 12 }}
+                animate={{ opacity: 1, scale: 1, x: 0 }}
+                exit={{ opacity: 0, scale: 0.85 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                className="flex items-center gap-3"
+              >
+                <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.94 }}>
+                  <Button variant="outline" size="lg" onClick={() => { setIsEditing(false); setFormData(profile); }}>Cancel</Button>
+                </motion.div>
+                <motion.div whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.94 }}>
+                  <Button size="lg" className="bg-emerald-500 hover:bg-emerald-600 text-white" onClick={handleSave} disabled={isSaving}>
+                    {isSaving ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Profile Strength Section */}
@@ -342,8 +523,8 @@ function ProfilePage() {
                     <Badge variant="outline" className={completionPercentage === 100 ? "text-emerald-600 border-emerald-200 bg-emerald-50" : "text-amber-600 border-amber-200 bg-amber-50"}>{completionPercentage}% Complete</Badge>
                   </div>
                   <div className="h-2 w-full max-w-md bg-slate-200 rounded-full overflow-hidden">
-                    <div className="h-full bg-emerald-500 rounded-full transition-all duration-1000 ease-out" style={{ width: `${completionPercentage}%` }} />
-                  </div>
+  <div className="h-full bg-emerald-500 rounded-full transition-all duration-1000 ease-out" style={{ width: animateBar ? `${completionPercentage}%` : '0%' }} />
+</div>
                   {missingSections.length > 0 ? (
                     <div className="text-sm text-slate-600">
                       <p className="font-semibold mb-2 text-slate-700">Missing:</p>
@@ -371,12 +552,31 @@ function ProfilePage() {
         {/* Profile Card */}
         <div className="flex flex-col gap-6">
           
-          <Card className="border-slate-200/60 shadow-sm overflow-hidden">
+          <Card className={`border-slate-200/60 shadow-sm overflow-hidden transition-all duration-300 ${cardEditRing}`}>
             <div className="h-24 bg-gradient-to-r from-emerald-600/10 via-primary/5 to-emerald-400/10 w-full" />
             <CardContent className="p-6 pt-0 relative">
               <div className="flex flex-col sm:flex-row gap-6 items-start sm:items-end -mt-12 mb-6">
-                <div className="w-28 h-28 rounded-full bg-background flex items-center justify-center border-4 border-background shadow-md shrink-0 ring-1 ring-slate-200">
-                  <span className="text-4xl font-bold text-emerald-500">{userName.charAt(0).toUpperCase()}</span>
+                <div className="relative w-28 h-28 shrink-0">
+                  <motion.div
+                    animate={isEditing ? { scale: [1, 1.04, 1] } : { scale: 1 }}
+                    transition={{ duration: 1.6, repeat: isEditing ? Infinity : 0, ease: 'easeInOut' }}
+                    className="w-28 h-28 rounded-full bg-background flex items-center justify-center border-4 border-background shadow-md ring-1 ring-slate-200"
+                  >
+                    <span className="text-4xl font-bold text-emerald-500">{userName.charAt(0).toUpperCase()}</span>
+                  </motion.div>
+                  <AnimatePresence>
+                    {isEditing && (
+                      <motion.div
+                        initial={{ scale: 0, rotate: -90 }}
+                        animate={{ scale: 1, rotate: 0 }}
+                        exit={{ scale: 0, rotate: 90 }}
+                        transition={{ type: 'spring', stiffness: 320, damping: 16 }}
+                        className="absolute -bottom-1 -right-1 w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center shadow-md ring-2 ring-white"
+                      >
+                        <Pencil className="w-3.5 h-3.5 text-white" />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
                 <div className="flex-1 space-y-1.5 pb-2">
                   <div className="flex items-center gap-3">
@@ -396,24 +596,29 @@ function ProfilePage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-slate-100">
-                <div className="flex flex-col items-center justify-center p-3 rounded-lg bg-slate-50 border border-slate-100">
-                  <span className="text-2xl font-bold text-slate-700">{profile.skills.length}</span>
-                  <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider flex items-center gap-1 mt-1"><Sparkles className="w-3 h-3"/> Skills</span>
-                </div>
-                <div className="flex flex-col items-center justify-center p-3 rounded-lg bg-slate-50 border border-slate-100">
-                  <span className="text-2xl font-bold text-slate-700">{profile.interests.length}</span>
-                  <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider flex items-center gap-1 mt-1"><Target className="w-3 h-3"/> Interests</span>
-                </div>
-                <div className="flex flex-col items-center justify-center p-3 rounded-lg bg-slate-50 border border-slate-100">
-                  <span className="text-2xl font-bold text-slate-700">{profile.projects.length}</span>
-                  <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider flex items-center gap-1 mt-1"><Code className="w-3 h-3"/> Projects</span>
-                </div>
-                <div className="flex flex-col items-center justify-center p-3 rounded-lg bg-slate-50 border border-slate-100">
-                  <span className="text-2xl font-bold text-slate-700">{profile.certifications.length}</span>
-                  <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider flex items-center gap-1 mt-1"><Medal className="w-3 h-3"/> Certs</span>
-                </div>
-              </div>
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.1 }}
+                className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-slate-100"
+              >
+  <div className="flex flex-col items-center justify-center p-3 rounded-lg bg-slate-50 border border-slate-100">
+    <span className="text-2xl font-bold text-slate-700"><AnimatedNumber value={profile.skills.length} /></span>
+    <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider flex items-center gap-1 mt-1"><Sparkles className="w-3 h-3"/> Skills</span>
+  </div>
+  <div className="flex flex-col items-center justify-center p-3 rounded-lg bg-slate-50 border border-slate-100">
+    <span className="text-2xl font-bold text-slate-700"><AnimatedNumber value={profile.interests.length} /></span>
+    <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider flex items-center gap-1 mt-1"><Target className="w-3 h-3"/> Interests</span>
+  </div>
+  <div className="flex flex-col items-center justify-center p-3 rounded-lg bg-slate-50 border border-slate-100">
+    <span className="text-2xl font-bold text-slate-700"><AnimatedNumber value={profile.projects.length} /></span>
+    <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider flex items-center gap-1 mt-1"><Code className="w-3 h-3"/> Projects</span>
+  </div>
+  <div className="flex flex-col items-center justify-center p-3 rounded-lg bg-slate-50 border border-slate-100">
+    <span className="text-2xl font-bold text-slate-700"><AnimatedNumber value={profile.certifications.length} /></span>
+    <span className="text-xs text-muted-foreground font-medium uppercase tracking-wider flex items-center gap-1 mt-1"><Medal className="w-3 h-3"/> Certs</span>
+  </div>
+</motion.div>
             </CardContent>
           </Card>
 
@@ -424,15 +629,16 @@ function ProfilePage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           
-          <Card className="shadow-sm border-slate-200/60">
+          <Card className={`shadow-sm border-slate-200/60 transition-all duration-300 ${cardEditRing}`}>
             <CardHeader className="border-b border-slate-100/50 pb-4">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <User className="w-5 h-5 text-slate-500" /> Basic Information
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-6 space-y-5">
+            <CardContent className="p-6 space-y-5 overflow-hidden">
+              <ModeSwitch editKey={isEditing}>
               {isEditing ? (
-                  <>
+                  <div className="space-y-5">
                     <div className="space-y-2">
                       <Label className="text-xs font-semibold uppercase text-slate-500">I am a...</Label>
                       <Select value={formData.userType} onValueChange={(v: any) => setFormData({...formData, userType: v})}>
@@ -489,7 +695,7 @@ function ProfilePage() {
                         </div>
                       )}
                     </div>
-                  </>
+                  </div>
               ) : (
                 <div className="space-y-6">
                   <div className="grid grid-cols-2 gap-4">
@@ -513,10 +719,11 @@ function ProfilePage() {
                   </div>
                 </div>
               )}
+              </ModeSwitch>
             </CardContent>
           </Card>
 
-          <Card className="shadow-sm border-slate-200/60">
+          <Card className={`shadow-sm border-slate-200/60 transition-all duration-300 ${cardEditRing}`}>
             <CardHeader className="border-b border-slate-100/50 pb-4">
               <CardTitle className="flex items-center gap-2 text-lg">
                 {formData.userType === 'Student' ? (
@@ -526,10 +733,11 @@ function ProfilePage() {
                 )}
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-6 space-y-5">
+            <CardContent className="p-6 space-y-5 overflow-hidden">
+              <ModeSwitch editKey={`${isEditing}-${formData.userType}`}>
               {formData.userType === 'Student' ? (
                   isEditing ? (
-                    <>
+                    <div className="space-y-5">
                       <div className="space-y-2"><Label className="text-xs font-semibold uppercase text-slate-500">University</Label><Input className="bg-slate-50" value={formData.university} onChange={(e: any) => setFormData({...formData, university: e.target.value})} placeholder="e.g. Stanford University" /></div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2"><Label className="text-xs font-semibold uppercase text-slate-500">Degree</Label><Input className="bg-slate-50" value={formData.degree} onChange={(e: any) => setFormData({...formData, degree: e.target.value})} placeholder="e.g. B.Tech" /></div>
@@ -540,7 +748,7 @@ function ProfilePage() {
                         <div className="space-y-2"><Label className="text-xs font-semibold uppercase text-slate-500">Graduation Year</Label><Input className="bg-slate-50" value={formData.year} onChange={(e: any) => setFormData({...formData, year: e.target.value})} placeholder="2026" /></div>
                         <div className="space-y-2"><Label className="text-xs font-semibold uppercase text-slate-500">CGPA</Label><Input className="bg-slate-50" value={formData.cgpa} onChange={(e: any) => setFormData({...formData, cgpa: e.target.value})} placeholder="8.5" /></div>
                       </div>
-                    </>
+                    </div>
                   ) : (
                     <div className="space-y-6">
                       <div>
@@ -569,14 +777,14 @@ function ProfilePage() {
                   )
               ) : (
                   isEditing ? (
-                    <>
+                    <div className="space-y-5">
                       <div className="space-y-2"><Label className="text-xs font-semibold uppercase text-slate-500">Current Job Title</Label><Input className="bg-slate-50" value={formData.currentJobTitle} onChange={(e: any) => setFormData({...formData, currentJobTitle: e.target.value})} placeholder="Software Engineer" /></div>
                       <div className="space-y-2"><Label className="text-xs font-semibold uppercase text-slate-500">Company Name</Label><Input className="bg-slate-50" value={formData.companyName} onChange={(e: any) => setFormData({...formData, companyName: e.target.value})} placeholder="Google" /></div>
                       <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2"><Label className="text-xs font-semibold uppercase text-slate-500">Years of Experience</Label><Input className="bg-slate-50" value={formData.yearsOfExperience} onChange={(e: any) => setFormData({...formData, yearsOfExperience: e.target.value})} type="number" placeholder="3" /></div>
                           <div className="space-y-2"><Label className="text-xs font-semibold uppercase text-slate-500">Current Salary</Label><Input className="bg-slate-50" value={formData.currentSalary} onChange={(e: any) => setFormData({...formData, currentSalary: e.target.value})} placeholder="₹15,00,000" /></div>
                       </div>
-                    </>
+                    </div>
                   ) : (
                     <div className="space-y-6">
                       <div>
@@ -597,10 +805,11 @@ function ProfilePage() {
                     </div>
                   )
               )}
+              </ModeSwitch>
             </CardContent>
           </Card>
 
-          <Card className="lg:col-span-2 shadow-sm border-slate-200/60">
+          <Card className={`lg:col-span-2 shadow-sm border-slate-200/60 transition-all duration-300 ${cardEditRing}`}>
             <CardHeader className="border-b border-slate-100/50 pb-4">
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Sparkles className="w-5 h-5 text-amber-500" /> Core Competencies
@@ -613,6 +822,7 @@ function ProfilePage() {
                   <Label className="text-sm font-bold text-slate-700 flex items-center gap-2"><Code className="w-4 h-4 text-emerald-500" /> Technical Skills</Label>
                   {!isEditing && <Badge variant="outline" className="bg-slate-50">{profile.skills.length}</Badge>}
                 </div>
+                <ModeSwitch editKey={isEditing}>
                 {isEditing ? (
                   <ChipInput 
                     value={formData.skills} 
@@ -629,6 +839,7 @@ function ProfilePage() {
                     )) : <span className="text-muted-foreground text-sm italic">No skills listed</span>}
                   </div>
                 )}
+                </ModeSwitch>
               </div>
 
               <div className="space-y-4">
@@ -636,6 +847,7 @@ function ProfilePage() {
                   <Label className="text-sm font-bold text-slate-700 flex items-center gap-2"><Target className="w-4 h-4 text-emerald-500" /> Professional Interests</Label>
                   {!isEditing && <Badge variant="outline" className="bg-slate-50">{profile.interests.length}</Badge>}
                 </div>
+                <ModeSwitch editKey={isEditing}>
                 {isEditing ? (
                   <ChipInput 
                     value={formData.interests} 
@@ -652,6 +864,7 @@ function ProfilePage() {
                     )) : <span className="text-muted-foreground text-sm italic">No interests listed</span>}
                   </div>
                 )}
+                </ModeSwitch>
               </div>
 
 
@@ -659,17 +872,20 @@ function ProfilePage() {
             </CardContent>
           </Card>
 
-          <Card className="lg:col-span-2 shadow-sm border-slate-200/60">
+          <Card className={`lg:col-span-2 shadow-sm border-slate-200/60 transition-all duration-300 ${cardEditRing}`}>
             <CardHeader className="border-b border-slate-100/50 pb-4 flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2 text-lg"><Code className="w-5 h-5 text-slate-500" /> Portfolio Projects</CardTitle>
                 <CardDescription className="mt-1">Showcase your hands-on experience and code</CardDescription>
               </div>
               {isEditing && (
-                <Button variant="outline" size="sm" onClick={openAddProject} className="shrink-0"><Plus className="w-4 h-4 mr-2" /> Add Project</Button>
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.92 }}>
+                  <Button variant="outline" size="sm" onClick={openAddProject} className="shrink-0"><Plus className="w-4 h-4 mr-2" /> Add Project</Button>
+                </motion.div>
               )}
             </CardHeader>
             <CardContent className="p-6 space-y-4">
+              <ModeSwitch editKey={isEditing}>
               {isEditing ? (
                 formData.projects.length === 0 ? (
                     <div className="text-center p-8 border border-dashed border-slate-300 rounded-xl text-slate-500 bg-slate-50/50">
@@ -742,20 +958,24 @@ function ProfilePage() {
                     </div>
                 )
               )}
+              </ModeSwitch>
             </CardContent>
           </Card>
 
-          <Card className="lg:col-span-2 shadow-sm border-slate-200/60">
+          <Card className={`lg:col-span-2 shadow-sm border-slate-200/60 transition-all duration-300 ${cardEditRing}`}>
             <CardHeader className="border-b border-slate-100/50 pb-4 flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2 text-lg"><Medal className="w-5 h-5 text-slate-500" /> Certifications</CardTitle>
                 <CardDescription className="mt-1">Add professional credentials to boost your profile</CardDescription>
               </div>
               {isEditing && (
-                <Button variant="outline" size="sm" onClick={openAddCert} className="shrink-0"><Plus className="w-4 h-4 mr-2" /> Add Cert</Button>
+                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.92 }}>
+                  <Button variant="outline" size="sm" onClick={openAddCert} className="shrink-0"><Plus className="w-4 h-4 mr-2" /> Add Cert</Button>
+                </motion.div>
               )}
             </CardHeader>
             <CardContent className="p-6 space-y-4">
+              <ModeSwitch editKey={isEditing}>
               {isEditing ? (
                 formData.certifications.length === 0 ? (
                     <div className="text-center p-8 border border-dashed border-slate-300 rounded-xl text-slate-500 bg-slate-50/50">
@@ -803,10 +1023,11 @@ function ProfilePage() {
                     </div>
                 )
               )}
+              </ModeSwitch>
             </CardContent>
           </Card>
 
-          <Card className="lg:col-span-2 shadow-sm border-slate-200/60">
+          <Card className={`lg:col-span-2 shadow-sm border-slate-200/60 transition-all duration-300 ${cardEditRing}`}>
             <CardHeader className="border-b border-slate-100/50 pb-4">
               <CardTitle className="flex items-center gap-2 text-lg"><LinkIcon className="w-5 h-5 text-slate-500" /> Coding Profiles & Links</CardTitle>
             </CardHeader>

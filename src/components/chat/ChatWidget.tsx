@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { FloatingChatButton } from './FloatingChatButton';
 import { ChatMessage, type Message } from './ChatMessage';
 
@@ -10,6 +11,39 @@ const SUGGESTED_PROMPTS = [
   'Improve my resume',
 ];
 
+// Small burst of particles that fly into the AI icon, once per chat-open
+const AIActivationEffect: React.FC<{ burstKey: number }> = ({ burstKey }) => {
+  const angles = [0, 60, 120, 180, 240, 300];
+  return (
+    <>
+      {/* Rotating energy ring - soft continuous glow */}
+      <motion.div
+        className="absolute inset-0 rounded-full pointer-events-none"
+        style={{ border: '1.5px dashed rgba(255,255,255,0.55)' }}
+        animate={{ rotate: 360 }}
+        transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
+      />
+      {/* One-time particle burst into the icon */}
+      <React.Fragment key={burstKey}>
+        {angles.map((angle) => (
+          <motion.span
+            key={angle}
+            className="absolute w-1 h-1 rounded-full bg-green-300 pointer-events-none"
+            style={{ top: '50%', left: '50%' }}
+            initial={{
+              x: Math.cos((angle * Math.PI) / 180) * 22,
+              y: Math.sin((angle * Math.PI) / 180) * 22,
+              opacity: 0,
+            }}
+            animate={{ x: 0, y: 0, opacity: [0, 1, 0] }}
+            transition={{ duration: 0.8, ease: 'easeIn' }}
+          />
+        ))}
+      </React.Fragment>
+    </>
+  );
+};
+
 export const ChatWidget: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
@@ -17,12 +51,13 @@ export const ChatWidget: React.FC = () => {
   const [inputText, setInputText] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
-  
+  const [burstKey, setBurstKey] = useState(0);
+  const [sendTrigger, setSendTrigger] = useState(0);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    // Fetch user session to get ID
     fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000/api"}/auth/get-session`, { credentials: "include" })
       .then(res => res.json())
       .then(data => {
@@ -33,12 +68,18 @@ export const ChatWidget: React.FC = () => {
       .catch(err => console.error("Failed to load session for chat:", err));
   }, []);
 
-  // Auto-scroll when messages change
   useEffect(() => {
     if (isOpen) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, isTyping, isOpen]);
+
+  // Trigger the AI activation particle burst each time the chat opens
+  useEffect(() => {
+    if (isOpen) {
+      setBurstKey((k) => k + 1);
+    }
+  }, [isOpen]);
 
   const toggleWidget = () => {
     setIsOpen(!isOpen);
@@ -71,7 +112,7 @@ export const ChatWidget: React.FC = () => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
-    }, 30000); // 30s timeout
+    }, 30000);
 
     try {
       const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000/api"}/chat`, {
@@ -80,9 +121,9 @@ export const ChatWidget: React.FC = () => {
         body: JSON.stringify({ userId, message: messageText }),
         signal: abortControllerRef.current.signal
       });
-      
+
       const data = await res.json();
-      
+
       const aiMsg: Message = {
         id: crypto.randomUUID(),
         role: 'assistant',
@@ -105,12 +146,20 @@ export const ChatWidget: React.FC = () => {
     }
   };
 
+  const handleSendClick = () => {
+    setSendTrigger((t) => t + 1);
+    sendMessage(inputText);
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
+      setSendTrigger((t) => t + 1);
       sendMessage(inputText);
     }
   };
+
+  const canSend = !!inputText.trim() && !isTyping;
 
   return (
     <>
@@ -128,8 +177,11 @@ export const ChatWidget: React.FC = () => {
         {/* Header */}
         <div className="bg-[#00a878] px-5 py-4 flex items-center justify-between shrink-0 shadow-sm relative z-10">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-              <span className="material-symbols-outlined text-white" style={{ fontVariationSettings: "'FILL' 1" }}>psychology</span>
+            <div className="relative w-10 h-10 flex items-center justify-center">
+              <AIActivationEffect burstKey={burstKey} />
+              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center relative z-10">
+                <span className="material-symbols-outlined text-white" style={{ fontVariationSettings: "'FILL' 1" }}>psychology</span>
+              </div>
             </div>
             <div>
               <h3 className="text-white font-bold text-[15px]">CareerAI Assistant</h3>
@@ -162,7 +214,19 @@ export const ChatWidget: React.FC = () => {
           {messages.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center max-w-[280px] mx-auto my-auto">
                <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center text-[#00a878] mb-4 shadow-sm border border-emerald-200">
-                  <span className="material-symbols-outlined text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>waving_hand</span>
+                <motion.span
+  key={isOpen ? 'wave-open' : 'wave-closed'}
+  className="material-symbols-outlined text-3xl"
+  style={{ fontVariationSettings: "'FILL' 1", display: 'inline-block', transformOrigin: '70% 70%' }}
+  animate={{ rotate: [0, 18, -14, 18, -14, 18, -14, 0] }}
+  transition={{
+    duration: 1.8,
+    ease: 'easeInOut',
+    times: [0, 0.14, 0.28, 0.42, 0.56, 0.7, 0.84, 1],
+  }}
+>
+  waving_hand
+</motion.span>
                </div>
                <h3 className="text-lg font-extrabold text-slate-800 mb-2">Hello there!</h3>
                <p className="text-[13px] text-slate-500 mb-6 leading-relaxed">I'm your AI career guide. Ask me anything about skills, roadmaps, or internships.</p>
@@ -182,21 +246,35 @@ export const ChatWidget: React.FC = () => {
           ) : (
             <div className="space-y-4 pb-2">
                {messages.map(msg => <ChatMessage key={msg.id} message={msg} />)}
-               {isTyping && (
-                  <div className="flex gap-3 flex-row w-full">
-                    <div className="w-8 h-8 rounded-full bg-[#00a878] text-white flex items-center justify-center shrink-0 mt-1 shadow-sm">
-                      <span className="material-symbols-outlined text-[18px]">psychology</span>
-                    </div>
-                    <div className="flex flex-col">
-                      <div className="text-xs font-bold text-slate-500 ml-2 mb-1">CareerAI is thinking...</div>
-                      <div className="bg-white border border-slate-200 px-4 py-3 rounded-2xl rounded-tl-none flex items-center gap-1.5 shadow-sm h-[40px] w-fit">
-                        <div className="w-1.5 h-1.5 bg-[#00a878] rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                        <div className="w-1.5 h-1.5 bg-[#00a878] rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                        <div className="w-1.5 h-1.5 bg-[#00a878] rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+               <AnimatePresence>
+                 {isTyping && (
+                    <motion.div
+                      className="flex gap-3 flex-row w-full"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.25 }}
+                    >
+                      <div className="w-8 h-8 rounded-full bg-[#00a878] text-white flex items-center justify-center shrink-0 mt-1 shadow-sm">
+                        <span className="material-symbols-outlined text-[18px]">psychology</span>
                       </div>
-                    </div>
-                  </div>
-               )}
+                      <div className="flex flex-col">
+                        <div className="text-xs font-bold text-slate-500 ml-2 mb-1">CareerAI is thinking...</div>
+                        <div className="bg-white border border-slate-200 px-4 py-3 rounded-2xl rounded-tl-none flex items-center gap-1.5 shadow-sm h-[40px] w-fit">
+                          {[0, 1, 2].map((i) => (
+                            <motion.div
+                              key={i}
+                              className="w-1.5 h-1.5 bg-[#00a878] rounded-full"
+                              style={{ boxShadow: '0 0 6px rgba(0,168,120,0.6)' }}
+                              animate={{ scale: [1, 1.4, 1], opacity: [0.5, 1, 0.5] }}
+                              transition={{ duration: 0.9, repeat: Infinity, delay: i * 0.15, ease: 'easeInOut' }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </motion.div>
+                 )}
+               </AnimatePresence>
                <div ref={messagesEndRef} />
             </div>
           )}
@@ -214,16 +292,31 @@ export const ChatWidget: React.FC = () => {
                className="w-full bg-transparent border-none focus:ring-0 resize-none max-h-24 min-h-[40px] py-2.5 px-3 text-[14px] text-slate-700 outline-none"
                rows={1}
              />
-             <button 
-               onClick={() => sendMessage(inputText)}
-               disabled={!inputText.trim() || isTyping}
-               className={`w-10 h-10 rounded-xl shrink-0 transition-all flex items-center justify-center mb-0.5 mr-0.5
-                 ${inputText.trim() && !isTyping 
-                   ? 'bg-[#00a878] text-white shadow-md hover:bg-[#008b63]' 
+             <motion.button 
+               onClick={handleSendClick}
+               disabled={!canSend}
+               animate={{
+                 scale: canSend ? 1.08 : 1,
+                 boxShadow: canSend ? '0 0 12px rgba(0,168,120,0.55)' : '0 0 0px rgba(0,168,120,0)',
+               }}
+               whileTap={canSend ? { scale: 0.88 } : undefined}
+               transition={{ duration: 0.25, ease: 'easeOut' }}
+               className={`w-10 h-10 rounded-xl shrink-0 flex items-center justify-center mb-0.5 mr-0.5
+                 ${canSend
+                   ? 'bg-[#00a878] text-white hover:bg-[#008b63]' 
                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
              >
-               <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1", marginLeft: '2px' }}>send</span>
-             </button>
+               <motion.span
+                 key={sendTrigger}
+                 className="material-symbols-outlined text-[20px]"
+                 style={{ fontVariationSettings: "'FILL' 1", marginLeft: '2px' }}
+                 initial={{ x: 0 }}
+                 animate={{ x: [0, 6, 0] }}
+                 transition={{ duration: 0.3, ease: 'easeOut' }}
+               >
+                 send
+               </motion.span>
+             </motion.button>
            </div>
            <p className="text-center text-[10px] font-bold text-slate-400 mt-2">
               AI Assistant can make mistakes.

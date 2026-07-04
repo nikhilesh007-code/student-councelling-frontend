@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
+import { motion } from 'framer-motion'
 import { authClient } from '../../../lib/auth-client'
 
 export const Route = createFileRoute('/auth/register/')({
@@ -74,12 +75,18 @@ function CareerAIRegister() {
         }
       `}</style>
 
-      <main
+      <motion.main
+        initial={{ opacity: 0, y: 80 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, ease: 'easeOut' }}
         style={{ maxWidth: 1200 }}
         className="w-full bg-white rounded-3xl shadow-xl overflow-hidden flex flex-col md:flex-row"
       >
         {/* LEFT SIDE */}
-        <section
+        <motion.section
+          initial={{ opacity: 0, x: -60 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.7, ease: 'easeOut', delay: 0.2 }}
           className="w-full md:w-1/2 p-8 md:p-12 lg:p-16 flex flex-col justify-between relative"
           style={{ backgroundColor: '#fafafa' }}
         >
@@ -134,10 +141,14 @@ function CareerAIRegister() {
               className="w-full max-w-lg object-contain illustration-float"
             />
           </div>
-        </section>
+        </motion.section>
 
         {/* RIGHT SIDE */}
-        <section className="w-full md:w-1/2 flex flex-col items-center justify-center p-8 md:p-12 lg:p-20 bg-white">
+        <motion.section
+          initial={{ opacity: 0, x: 60 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.7, ease: 'easeOut', delay: 0.4 }}
+          className="w-full md:w-1/2 flex flex-col items-center justify-center p-8 md:p-12 lg:p-20 bg-white">
           <div className="w-full max-w-md">
             <div className="text-center mb-10">
               <h2 className="text-3xl font-bold text-gray-900 mb-2">Create Account ✨</h2>
@@ -285,8 +296,8 @@ function CareerAIRegister() {
               </div>
             </form>
           </div>
-        </section>
-      </main>
+        </motion.section>
+      </motion.main>
     </div>
   )
 }

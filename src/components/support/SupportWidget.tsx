@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
 import { feedbackApi } from '../../lib/feedback-api';
 import { toast } from 'sonner';
 
@@ -18,11 +19,84 @@ const QUICK_ACTIONS = [
   { id: 'support', title: 'Contact Support', desc: 'Send a general question or request.', icon: 'support_agent', category: 'General Support' }
 ];
 
+// --- AI guide orb animation timing (seconds) ---
+const ORB_TRAVEL = 0.4     // time the orb takes to fly between two cards
+const ORB_DWELL = 0.45     // time the orb pauses on a card (matches the glow/icon animation length)
+const ORB_FADE = 0.4       // time the orb takes to fade away after the last card
+const ORB_SIZE = 14        // px, used to center the orb exactly on each card
+
+// Small, meaningful per-icon animations, played once when the orb visits that card
+const ICON_KEYFRAMES: Record<string, any> = {
+  bug: { rotate: [0, -14, 14, -10, 10, 0] },
+  feature: { scale: [1, 1.3, 1.05, 1] },
+  ui: { rotate: [0, 18, -12, 0] },
+  support: { y: [0, -7, 0, -3, 0] },
+}
+
+interface OrbPath {
+  x: number[]
+  y: number[]
+  opacity: number[]
+  times: number[]
+  duration: number
+  dwellStarts: number[] // seconds, when each card should start glowing
+}
+
 interface SupportWidgetProps {
   userId?: string;
   isOpen: boolean;
   onClose: () => void;
 }
+
+/** The tiny glowing green orb that flies from card to card. */
+function AiOrb({ path }: { path: OrbPath }) {
+  return (
+    <motion.div
+      className="pointer-events-none absolute z-20 rounded-full bg-[#00a878]"
+      style={{ top: 0, left: 0, width: ORB_SIZE, height: ORB_SIZE, boxShadow: '0 0 12px 4px rgba(0,168,120,0.65)' }}
+      initial={{ x: path.x[0], y: path.y[0], opacity: 0 }}
+      animate={{ x: path.x, y: path.y, opacity: path.opacity }}
+      transition={{ duration: path.duration, times: path.times, ease: 'easeInOut' }}
+    />
+  )
+}
+
+/** A single quick-action card. `active` triggers its one-time glow + icon animation. */
+const QuickActionCard = React.forwardRef<HTMLButtonElement, {
+  action: typeof QUICK_ACTIONS[number]
+  active: boolean
+  onClick: () => void
+}>(({ action, active, onClick }, ref) => {
+  return (
+    <motion.button
+      ref={ref}
+      onClick={onClick}
+      className="bg-white border border-slate-200 hover:border-[#00a878] hover:shadow-md p-4 rounded-xl text-left transition-all group flex flex-col items-start gap-2 h-full"
+      animate={
+        active
+          ? { boxShadow: ['0 0 0 0 rgba(0,168,120,0)', '0 0 0 4px rgba(0,168,120,0.32)', '0 0 0 0 rgba(0,168,120,0)'] }
+          : undefined
+      }
+      transition={{ duration: ORB_DWELL, ease: 'easeInOut' }}
+    >
+      <div className="w-10 h-10 rounded-lg bg-emerald-50 text-[#00a878] flex items-center justify-center group-hover:scale-110 transition-transform">
+        <motion.span
+          className="material-symbols-outlined text-[20px]"
+          style={{ fontVariationSettings: "'FILL' 1" }}
+          animate={active ? ICON_KEYFRAMES[action.id] : undefined}
+          transition={{ duration: ORB_DWELL, ease: 'easeInOut' }}
+        >
+          {action.icon}
+        </motion.span>
+      </div>
+      <div>
+        <h4 className="font-bold text-slate-800 text-[14px]">{action.title}</h4>
+        <p className="text-slate-500 text-[12px] leading-snug mt-1">{action.desc}</p>
+      </div>
+    </motion.button>
+  )
+})
+QuickActionCard.displayName = 'QuickActionCard'
 
 export const SupportWidget: React.FC<SupportWidgetProps> = ({ userId, isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState<'new' | 'my_reports'>('new');
@@ -43,11 +117,102 @@ export const SupportWidget: React.FC<SupportWidgetProps> = ({ userId, isOpen, on
   const fileInputRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
+  // --- AI guide orb state ---
+  const gridWrapRef = useRef<HTMLDivElement>(null);
+  const cardRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const orbTriggeredRef = useRef(false);
+  const [orbPath, setOrbPath] = useState<OrbPath | null>(null);
+  const [activeCardIndex, setActiveCardIndex] = useState(-1);
+
   useEffect(() => {
     if (isOpen && activeTab === 'my_reports') {
       fetchReports();
     }
   }, [isOpen, activeTab]);
+
+  // Play the AI guide orb once, each time the popup opens on the quick-actions screen.
+  useEffect(() => {
+    if (!isOpen) {
+      // Reset so it plays again next time the popup opens
+      orbTriggeredRef.current = false;
+      setOrbPath(null);
+      setActiveCardIndex(-1);
+      return;
+    }
+    if (activeTab !== 'new' || selectedAction || orbTriggeredRef.current) return;
+
+    const timeouts: ReturnType<typeof setTimeout>[] = [];
+
+    // Wait for the cards to actually paint before measuring their positions
+    const raf = requestAnimationFrame(() => {
+      const containerEl = gridWrapRef.current;
+      if (!containerEl) return;
+      const containerRect = containerEl.getBoundingClientRect();
+      const centers = cardRefs.current.map((el) => {
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        return {
+          x: r.left - containerRect.left + r.width / 2 - ORB_SIZE / 2,
+          y: r.top - containerRect.top + r.height / 2 - ORB_SIZE / 2,
+        };
+      });
+      if (centers.some((c) => c === null)) return;
+      const pts = centers as { x: number; y: number }[];
+
+      orbTriggeredRef.current = true;
+
+      const entry = { x: pts[0].x, y: pts[0].y - 50 };
+      const points = [entry];
+      const segDurations: number[] = [];
+
+      pts.forEach((c) => {
+        points.push(c); // travel to this card
+        segDurations.push(ORB_TRAVEL);
+        points.push(c); // dwell on this card
+        segDurations.push(ORB_DWELL);
+      });
+      // Hold + fade out after the last card
+      points.push(pts[pts.length - 1]);
+      segDurations.push(ORB_FADE);
+
+      const total = segDurations.reduce((a, b) => a + b, 0);
+      let cum = 0;
+      const times = [0];
+      segDurations.forEach((d) => {
+        cum += d;
+        times.push(cum / total);
+      });
+
+      const opacity = points.map((_, i) => (i === 0 || i === points.length - 1 ? 0 : 1));
+
+      let acc = 0;
+      const dwellStarts: number[] = [];
+      segDurations.forEach((d, idx) => {
+        if (idx % 2 === 1) dwellStarts.push(acc);
+        acc += d;
+      });
+
+      setOrbPath({
+        x: points.map((p) => p.x),
+        y: points.map((p) => p.y),
+        opacity,
+        times,
+        duration: total,
+        dwellStarts,
+      });
+
+      dwellStarts.forEach((startSec, idx) => {
+        timeouts.push(setTimeout(() => setActiveCardIndex(idx), startSec * 1000));
+      });
+      timeouts.push(setTimeout(() => setActiveCardIndex(-1), total * 1000));
+    });
+
+    return () => {
+      cancelAnimationFrame(raf);
+      timeouts.forEach(clearTimeout);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, activeTab, selectedAction]);
 
   const fetchReports = async () => {
     setIsLoadingReports(true);
@@ -207,22 +372,21 @@ export const SupportWidget: React.FC<SupportWidgetProps> = ({ userId, isOpen, on
               {activeTab === 'new' && (
                 <div>
                   {!selectedAction ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {QUICK_ACTIONS.map(action => (
-                        <button 
-                          key={action.id}
-                          onClick={() => setSelectedAction(action)}
-                          className="bg-white border border-slate-200 hover:border-[#00a878] hover:shadow-md p-4 rounded-xl text-left transition-all group flex flex-col items-start gap-2 h-full"
-                        >
-                          <div className="w-10 h-10 rounded-lg bg-emerald-50 text-[#00a878] flex items-center justify-center group-hover:scale-110 transition-transform">
-                            <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>{action.icon}</span>
-                          </div>
-                          <div>
-                            <h4 className="font-bold text-slate-800 text-[14px]">{action.title}</h4>
-                            <p className="text-slate-500 text-[12px] leading-snug mt-1">{action.desc}</p>
-                          </div>
-                        </button>
-                      ))}
+                    <div ref={gridWrapRef} className="relative">
+                      {orbPath && <AiOrb path={orbPath} />}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {QUICK_ACTIONS.map((action, idx) => (
+                          <QuickActionCard
+                            key={action.id}
+                            ref={(el) => {
+  cardRefs.current[idx] = el;
+}}
+                            action={action}
+                            active={activeCardIndex === idx}
+                            onClick={() => setSelectedAction(action)}
+                          />
+                        ))}
+                      </div>
                     </div>
                   ) : (
                     <form onSubmit={handleSubmit} className="flex flex-col gap-4 animate-in fade-in duration-300">

@@ -1,6 +1,7 @@
 import { createFileRoute, useRouteContext } from '@tanstack/react-router'
 import { useState, useEffect } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import { motion } from 'framer-motion'
 import { DashboardLayout } from '../../../components/layout/DashboardLayout'
 import { studyPlannerApi } from '../../../lib/study-planner-api'
 import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, format, addMonths, subMonths, setMonth, setYear } from 'date-fns'
@@ -45,10 +46,20 @@ function StudyPlannerPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
+  // AI Timeline Activation animation — plays once on load
+  const [animateTimeline, setAnimateTimeline] = useState(false);
+
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchTerm), 200);
     return () => clearTimeout(timer);
   }, [searchTerm]);
+
+  useEffect(() => {
+    if (!loading) {
+      const timer = setTimeout(() => setAnimateTimeline(true), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [loading]);
 
   const [prefs, setPrefs] = useState({
     planType: 'Weekly',
@@ -222,6 +233,26 @@ function StudyPlannerPage() {
       onSearchChange={setSearchTerm}
     >
       <div className="min-w-0 w-full max-w-7xl mx-auto pb-10 relative">
+
+        {/* AI Timeline Activation — bold ripple originating near the calendar, travels left */}
+        {animateTimeline && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{ opacity: [0, 0.6, 0], scale: 4.5 }}
+            transition={{ duration: 1.4, delay: 0.55, ease: 'easeOut' }}
+            style={{
+              position: 'absolute',
+              top: '230px',
+              right: '60px',
+              width: '380px',
+              height: '380px',
+              borderRadius: '9999px',
+              background: 'radial-gradient(circle, rgba(0,168,120,1) 0%, rgba(0,168,120,0.35) 40%, rgba(0,168,120,0) 70%)',
+              pointerEvents: 'none',
+              zIndex: 0,
+            }}
+          />
+        )}
         
         {/* Header */}
         <div className="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
@@ -288,50 +319,113 @@ function StudyPlannerPage() {
         )}
 
         {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 min-w-0 flex items-center gap-4 hover:-translate-y-1 transition-transform">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-8 relative z-[1]">
+          <motion.div
+            animate={animateTimeline ? {
+              y: [0, -8, 0],
+              scale: [1, 1.05, 1],
+              boxShadow: ['0 1px 2px rgba(0,0,0,0.05)', '0 12px 28px rgba(0,168,120,0.45)', '0 1px 2px rgba(0,0,0,0.05)']
+            } : {}}
+            transition={{ duration: 0.8, delay: 0.9, ease: 'easeInOut' }}
+            className="bg-white rounded-2xl p-5 border border-slate-100 min-w-0 flex items-center gap-4"
+          >
             <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-500 flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined">schedule</span>
+              <motion.span
+                animate={animateTimeline ? { rotate: [0, 360] } : {}}
+                transition={{ duration: 0.8, delay: 0.9, ease: 'easeInOut' }}
+                className="material-symbols-outlined inline-block"
+              >
+                schedule
+              </motion.span>
             </div>
             <div>
               <p className="text-[11px] font-bold text-slate-400 uppercase">Study Hours</p>
               <p className="text-[20px] font-black text-slate-900">{stats?.studyHours || 0}h</p>
             </div>
-          </div>
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 min-w-0 flex items-center gap-4 hover:-translate-y-1 transition-transform">
+          </motion.div>
+          <motion.div
+            animate={animateTimeline ? {
+              y: [0, -8, 0],
+              scale: [1, 1.05, 1],
+              boxShadow: ['0 1px 2px rgba(0,0,0,0.05)', '0 12px 28px rgba(0,168,120,0.45)', '0 1px 2px rgba(0,0,0,0.05)']
+            } : {}}
+            transition={{ duration: 0.8, delay: 1.15, ease: 'easeInOut' }}
+            className="bg-white rounded-2xl p-5 border border-slate-100 min-w-0 flex items-center gap-4"
+          >
             <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>emoji_events</span>
+              <motion.span
+                animate={animateTimeline ? { rotate: [0, 360] } : {}}
+                transition={{ duration: 0.8, delay: 1.15, ease: 'easeInOut' }}
+                className="material-symbols-outlined inline-block"
+                style={{ fontVariationSettings: "'FILL' 1" }}
+              >
+                emoji_events
+              </motion.span>
             </div>
             <div>
               <p className="text-[11px] font-bold text-slate-400 uppercase">Completed Tasks</p>
               <p className="text-[20px] font-black text-slate-900">{stats?.completedTasks || 0}</p>
             </div>
-          </div>
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 min-w-0 flex items-center gap-4 hover:-translate-y-1 transition-transform">
+          </motion.div>
+          <motion.div
+            animate={animateTimeline ? {
+              y: [0, -8, 0],
+              scale: [1, 1.05, 1],
+              boxShadow: ['0 1px 2px rgba(0,0,0,0.05)', '0 12px 28px rgba(0,168,120,0.45)', '0 1px 2px rgba(0,0,0,0.05)']
+            } : {}}
+            transition={{ duration: 0.8, delay: 1.4, ease: 'easeInOut' }}
+            className="bg-white rounded-2xl p-5 border border-slate-100 min-w-0 flex items-center gap-4"
+          >
             <div className="w-12 h-12 rounded-xl bg-emerald-50 text-[#00a878] flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined">task_alt</span>
+              <motion.span
+                animate={animateTimeline ? { rotate: [0, 360] } : {}}
+                transition={{ duration: 0.8, delay: 1.4, ease: 'easeInOut' }}
+                className="material-symbols-outlined inline-block"
+              >
+                task_alt
+              </motion.span>
             </div>
             <div>
               <p className="text-[11px] font-bold text-slate-400 uppercase">Completion Rate</p>
               <p className="text-[20px] font-black text-slate-900">{stats?.completionRate || 0}%</p>
             </div>
-          </div>
-          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 min-w-0 flex items-center gap-4 hover:-translate-y-1 transition-transform">
+          </motion.div>
+          <motion.div
+            animate={animateTimeline ? {
+              y: [0, -8, 0],
+              scale: [1, 1.05, 1],
+              boxShadow: ['0 1px 2px rgba(0,0,0,0.05)', '0 12px 28px rgba(0,168,120,0.45)', '0 1px 2px rgba(0,0,0,0.05)']
+            } : {}}
+            transition={{ duration: 0.8, delay: 1.65, ease: 'easeInOut' }}
+            className="bg-white rounded-2xl p-5 border border-slate-100 min-w-0 flex items-center gap-4"
+          >
             <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-500 flex items-center justify-center shrink-0">
-              <span className="material-symbols-outlined">target</span>
+              <motion.span
+                animate={animateTimeline ? { rotate: [0, 360] } : {}}
+                transition={{ duration: 0.8, delay: 1.65, ease: 'easeInOut' }}
+                className="material-symbols-outlined inline-block"
+              >
+                target
+              </motion.span>
             </div>
             <div>
               <p className="text-[11px] font-bold text-slate-400 uppercase">Today Remaining</p>
               <p className="text-[20px] font-black text-slate-900">{stats?.todayRemaining || 0}</p>
             </div>
-          </div>
+          </motion.div>
         </div>
 
         {/* Main Layout Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6 relative z-[1]">
 
         {/* Left Column: Tasks List */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex-1 min-w-0">
+        <motion.div
+          animate={animateTimeline ? {
+            boxShadow: ['0 1px 2px rgba(0,0,0,0.05)', '0 0 0 4px rgba(0,168,120,0.25)', '0 1px 2px rgba(0,0,0,0.05)']
+          } : {}}
+          transition={{ duration: 0.9, delay: 2.0, ease: 'easeInOut' }}
+          className="bg-white rounded-2xl border border-slate-100 overflow-hidden flex-1 min-w-0"
+        >
           <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
             <h3 className="text-[16px] font-extrabold text-slate-900 flex items-center gap-2">
               <span className="material-symbols-outlined text-indigo-500">list_alt</span> Study Schedule
@@ -344,18 +438,28 @@ function StudyPlannerPage() {
                 <h4 className="text-lg font-bold text-slate-700 mb-2">No Study Plan Active</h4>
                 <p className="text-sm text-slate-500 mb-6 max-w-md mx-auto">Generate a Daily Plan for today's learning goals or a Weekly Plan for a complete 7-day schedule.</p>
                 <div className="flex flex-col sm:flex-row justify-center gap-3">
-                  <button 
+                  <motion.button 
                     onClick={() => initiateGenerate(undefined, true, false)}
-                    className="bg-white border border-[#00a878] text-[#00a878] px-6 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-emerald-50 transition-colors"
+                    animate={animateTimeline ? {
+                      scale: [1, 1.1, 1],
+                      boxShadow: ['0 1px 2px rgba(0,0,0,0.05)', '0 0 20px rgba(0,168,120,0.55)', '0 1px 2px rgba(0,0,0,0.05)']
+                    } : {}}
+                    transition={{ duration: 0.5, delay: 2.5, ease: 'easeInOut' }}
+                    className="bg-white border border-[#00a878] text-[#00a878] px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-emerald-50 transition-colors"
                   >
                     Generate Daily Plan
-                  </button>
-                  <button 
+                  </motion.button>
+                  <motion.button 
                     onClick={() => initiateGenerate(undefined, false, true)}
-                    className="bg-[#00a878] text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-sm hover:bg-[#008b63] transition-colors"
+                    animate={animateTimeline ? {
+                      scale: [1, 1.1, 1],
+                      boxShadow: ['0 1px 2px rgba(0,0,0,0.05)', '0 0 20px rgba(0,168,120,0.55)', '0 1px 2px rgba(0,0,0,0.05)']
+                    } : {}}
+                    transition={{ duration: 0.5, delay: 2.5, ease: 'easeInOut' }}
+                    className="bg-[#00a878] text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-[#008b63] transition-colors"
                   >
                     Generate Weekly Plan
-                  </button>
+                  </motion.button>
                 </div>
               </div>
             ) : filteredTasks.length === 0 ? (
@@ -453,7 +557,7 @@ function StudyPlannerPage() {
               </div>
             )}
           </div>
-        </div>
+        </motion.div>
 
         {/* Right Column: Calendar Widget */}
         <div className="space-y-6">
@@ -511,10 +615,15 @@ function StudyPlannerPage() {
                 const isCurrentMonth = isSameMonth(d, currentMonth);
                 
                 return (
-                  <button
+                  <motion.button
                     key={i}
                     onClick={() => setSelectedDate(isSelected ? null : dateStr)}
-                    className={`aspect-square flex flex-col items-center justify-center rounded-lg text-xs font-medium relative transition-all
+                    animate={isToday && animateTimeline ? {
+                      scale: [1, 1.25, 1],
+                      boxShadow: ['0 0 0 rgba(0,168,120,0)', '0 0 0 6px rgba(0,168,120,0.35)', '0 0 0 rgba(0,168,120,0)']
+                    } : {}}
+                    transition={{ duration: 0.7, ease: 'easeInOut' }}
+                    className={`aspect-square flex flex-col items-center justify-center rounded-lg text-xs font-medium relative transition-colors
                       ${isSelected ? 'bg-[#00a878] text-white shadow-sm' : 
                         isToday ? 'bg-emerald-50 text-[#00a878] font-bold border border-emerald-200' : 
                         !isCurrentMonth ? 'text-slate-300 hover:bg-slate-50' :
@@ -524,7 +633,7 @@ function StudyPlannerPage() {
                     {hasTasks && (
                       <span className={`w-1 h-1 rounded-full absolute bottom-1 ${isSelected ? 'bg-white' : 'bg-[#00a878]'}`}></span>
                     )}
-                  </button>
+                  </motion.button>
                 );
               })}
             </div>

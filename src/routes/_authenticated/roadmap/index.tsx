@@ -1,6 +1,7 @@
 import { createFileRoute, useRouteContext } from '@tanstack/react-router'
 import { useState, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { motion } from 'framer-motion'
 import { DashboardLayout } from '../../../components/layout/DashboardLayout'
 
 export const Route = createFileRoute('/_authenticated/roadmap/')({
@@ -8,6 +9,9 @@ export const Route = createFileRoute('/_authenticated/roadmap/')({
 })
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+
+// Total time the "AI activation" beam takes to travel from Phase 1 to the last phase
+const BEAM_DURATION = 2.6
 
 function RoadmapPage() {
   const context = useRouteContext({ strict: false }) as any;
@@ -352,16 +356,55 @@ function RoadmapPage() {
             </div>
 
             <div className="relative pl-6 sm:pl-8 border-l-2 border-slate-100 space-y-6 sm:ml-4">
+
+              {/* AI Timeline Activation — one-time energy beam that travels down the line */}
+              {timeline.length > 0 && (
+                <>
+                  <motion.div
+                    aria-hidden="true"
+                    className="absolute left-0 top-0 w-[2px] bg-gradient-to-b from-[#00a878] via-[#00a878]/70 to-transparent pointer-events-none"
+                    initial={{ height: '0%', opacity: 1 }}
+                    animate={{ height: '100%', opacity: [1, 1, 0] }}
+                    transition={{ duration: BEAM_DURATION, ease: 'easeInOut', times: [0, 0.85, 1] }}
+                  />
+                  <motion.div
+                    aria-hidden="true"
+                    className="absolute -left-[7px] w-3.5 h-3.5 rounded-full bg-[#00a878] pointer-events-none"
+                    style={{ boxShadow: '0 0 14px 4px rgba(0,168,120,0.55)' }}
+                    initial={{ top: '0%', opacity: 1, scale: 1 }}
+                    animate={{ top: '100%', opacity: [1, 1, 0], scale: [1, 1.3, 1] }}
+                    transition={{ duration: BEAM_DURATION, ease: 'easeInOut', times: [0, 0.85, 1] }}
+                  />
+                </>
+              )}
+
               {timeline.map((phase: any) => {
                 const { isCompleted, isInProgress, isLocked } = phase;
+                const activationDelay = timeline.length > 1
+                  ? (phase.id / (timeline.length - 1)) * (BEAM_DURATION - 0.5)
+                  : 0;
                 
                 return (
-                <div key={phase.id} className={`relative rounded-xl border p-5 flex flex-col sm:flex-row gap-4 sm:gap-6 items-start transition-all
+                <motion.div
+                  key={phase.id}
+                  initial={{ scale: 1 }}
+                  animate={{ scale: [1, 1.015, 1] }}
+                  transition={{ duration: 0.6, delay: activationDelay, ease: 'easeOut' }}
+                  className={`relative rounded-xl border p-5 flex flex-col sm:flex-row gap-4 sm:gap-6 items-start transition-all
                   ${isCompleted ? 'bg-white border-slate-100 hover:shadow-sm' : 
                     isInProgress ? 'bg-blue-50/50 border-blue-100 shadow-sm' : 
                     isLocked ? 'bg-slate-50 border-slate-100 opacity-60' :
                     'bg-white border-slate-100 hover:shadow-sm'}`}
                 >
+                  {/* Soft green activation flash as the beam passes this phase */}
+                  <motion.div
+                    aria-hidden="true"
+                    className="absolute inset-0 rounded-xl bg-[#00a878] pointer-events-none"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: [0, 0.14, 0] }}
+                    transition={{ duration: 0.6, delay: activationDelay, ease: 'easeInOut' }}
+                  />
+
                   <div className={`absolute -left-[35px] sm:-left-[43px] top-5 w-6 h-6 rounded-full flex items-center justify-center border-4 border-white
                     ${isCompleted ? 'bg-[#00a878] text-white' : 
                       isInProgress ? 'bg-blue-500 text-white' : 
@@ -473,7 +516,7 @@ function RoadmapPage() {
                       <span className="material-symbols-outlined">{expandedPhases[phase.id] ? 'expand_less' : 'expand_more'}</span>
                     </button>
                   </div>
-                </div>
+                </motion.div>
               )})}
             </div>
           </div>

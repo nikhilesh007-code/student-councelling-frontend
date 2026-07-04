@@ -10,6 +10,7 @@ type AuthenticatedContext = {
 }
 
 export const Route = createFileRoute('/_authenticated')({
+  staleTime: 5 * 60 * 1000, // treat session/profile as fresh for 5 minutes — stop re-fetching on every page click
   beforeLoad: async ({ location }): Promise<AuthenticatedContext> => {
     // 1. Frontend-only mode: Remove Better Auth session fetch, use mock user directly
     const sessionResponse = await fetch(

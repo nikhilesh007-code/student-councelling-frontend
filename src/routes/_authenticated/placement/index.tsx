@@ -1,7 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { useEffect, useRef, useState } from 'react'
 import { DashboardLayout } from '../../../components/layout/DashboardLayout'
 import { useQuery } from '@tanstack/react-query'
 import { authClient } from '../../../lib/auth-client'
+import { motion, animate } from 'framer-motion'
 
 export const Route = createFileRoute('/_authenticated/placement/')({
   component: PlacementPage,
@@ -9,11 +11,7 @@ export const Route = createFileRoute('/_authenticated/placement/')({
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
 
-async function fetchPlacementDashboard() {
-  const session = await authClient.getSession();
-  const userId = session?.data?.user?.id;
-  if (!userId) return null;
-
+async function fetchPlacementDashboard(userId: string) {
   const res = await fetch(`${API_URL}/placement/dashboard`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -25,17 +23,74 @@ async function fetchPlacementDashboard() {
   return res.json()
 }
 
+// ---------- Counts a number up from 0 to its final value, once ----------
+function AnimatedPercent({ value, onDone }: { value: number; onDone?: () => void }) {
+  const [display, setDisplay] = useState(0)
+  useEffect(() => {
+    const controls = animate(0, value, {
+      duration: 1,
+      ease: 'easeOut',
+      onUpdate: (latest) => setDisplay(Math.round(latest)),
+      onComplete: () => onDone?.(),
+    })
+    return () => controls.stop()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value])
+  return <>{display}</>
+}
+
+type TreeTarget = 'strengths' | 'weaknesses' | 'interview' | 'eligibility' | 'recruiter'
+const SEQUENCE_ORDER: TreeTarget[] = ['strengths', 'weaknesses', 'interview', 'eligibility', 'recruiter']
+const STEP_GAP_MS = 550
+
 function PlacementPage() {
-  const { data: session } = authClient.useSession()
+  const { data: session, isPending: sessionLoading } = authClient.useSession()
   const userId = session?.user?.id
 
   const { data: dashboard, isLoading, error } = useQuery({
     queryKey: ['placementDashboard', 'v2', userId],
-    queryFn: fetchPlacementDashboard,
+    queryFn: () => fetchPlacementDashboard(userId as string),
     enabled: !!userId,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   })
 
-  if (isLoading) {
+  // True while we're still waiting on either the session OR the dashboard data.
+  // Everything below should check THIS, not the raw isLoading, or we're back
+  // to the same "flash of error before real data" bug.
+  const stillLoading = sessionLoading || !userId || isLoading
+
+  const hasPlayedRef = useRef(false)
+
+  const [scoreDone, setScoreDone] = useState(false)
+  const [activePulse, setActivePulse] = useState<TreeTarget | null>(null)
+  const [interviewBarsReady, setInterviewBarsReady] = useState(false)
+  const [recruiterRevealed, setRecruiterRevealed] = useState(false)
+
+  const handleStepArrived = (id: TreeTarget) => {
+    setActivePulse(id)
+    setTimeout(() => setActivePulse(null), 450)
+    if (id === 'interview') setInterviewBarsReady(true)
+    if (id === 'recruiter') setRecruiterRevealed(true)
+  }
+
+  // Once the score finishes counting up, play the card-by-card sequence on a simple timer.
+  useEffect(() => {
+    if (!scoreDone || hasPlayedRef.current || !dashboard) return
+    hasPlayedRef.current = true
+
+    const timers = SEQUENCE_ORDER.map((id, idx) =>
+      setTimeout(() => handleStepArrived(id), idx * STEP_GAP_MS + 200)
+    )
+
+    return () => timers.forEach(clearTimeout)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scoreDone, dashboard])
+
+  const pulseAnimate = (id: TreeTarget) =>
+    activePulse === id ? { scale: 1.03, y: -6 } : { scale: 1, y: 0 }
+
+  if (stillLoading) {
     return (
       <DashboardLayout>
         <div className="flex flex-col items-center justify-center min-h-[60vh]">
@@ -66,6 +121,8 @@ function PlacementPage() {
     )
   }
 
+  const finalScore = dashboard.estimatedPlacementConfidence?.score || 0
+
   return (
     <DashboardLayout>
       <div className="min-w-0 w-full max-w-7xl mx-auto pb-10">
@@ -73,14 +130,21 @@ function PlacementPage() {
         {/* Page Header */}
         <div className="mb-8">
           <h2 className="text-3xl font-extrabold text-slate-900 flex items-center gap-3 mb-2">
-            Placement Coach
-            <span className="material-symbols-outlined text-[#00a878]" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
-          </h2>
+  Placement Coach
+  <motion.span
+    className="material-symbols-outlined text-[#00a878]"
+    style={{ fontVariationSettings: "'FILL' 1", display: 'inline-block', transformOrigin: '50% 50%' }}
+    animate={{ rotate: [0, -12, 12, -8, 0], scale: [1, 1.15, 1.15, 1.05, 1] }}
+    transition={{ duration: 2.2, repeat: Infinity, repeatDelay: 1.2, ease: 'easeInOut' }}
+  >
+    auto_awesome
+  </motion.span>
+</h2>
           <p className="text-[14px] text-slate-500">Your personalized placement readiness assessment and actionable priorities.</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 min-w-0">
-          
+
           {/* Left Column (Main Content) - 8 columns */}
           <div className="lg:col-span-8 space-y-8 min-w-0">
             
@@ -91,10 +155,22 @@ function PlacementPage() {
               <div className="relative w-32 h-32 shrink-0 group" title={dashboard.estimatedPlacementConfidence?.confidenceReason}>
                 <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
                   <path className="text-slate-100" strokeWidth="3.5" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                  <path className="text-[#00a878] drop-shadow-sm" strokeDasharray={`${dashboard.estimatedPlacementConfidence?.score || 0}, 100`} strokeWidth="3.5" strokeLinecap="round" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                  <motion.path
+                    className="text-[#00a878] drop-shadow-sm"
+                    strokeWidth="3.5"
+                    strokeLinecap="round"
+                    stroke="currentColor"
+                    fill="none"
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                    initial={{ strokeDasharray: '0, 100' }}
+                    animate={{ strokeDasharray: `${finalScore}, 100` }}
+                    transition={{ duration: 1, ease: 'easeOut' }}
+                  />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-3xl font-black text-slate-900">{dashboard.estimatedPlacementConfidence?.score || 0}%</span>
+                  <span className="text-3xl font-black text-slate-900">
+                    <AnimatedPercent value={finalScore} onDone={() => setScoreDone(true)} />%
+                  </span>
                 </div>
               </div>
               
@@ -122,7 +198,11 @@ function PlacementPage() {
 
             {/* Strengths & Weaknesses */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 min-w-0">
-              <div className="bg-emerald-50/50 rounded-2xl p-6 shadow-sm border border-emerald-100 min-w-0">
+              <motion.div
+                animate={pulseAnimate('strengths')}
+                transition={{ duration: 0.35, ease: 'easeOut' }}
+                className="bg-emerald-50/50 rounded-2xl p-6 shadow-sm border border-emerald-100 min-w-0"
+              >
                 <h3 className="text-[16px] font-extrabold text-emerald-900 mb-4 flex items-center gap-2">
                   <span className="material-symbols-outlined text-emerald-500">add_circle</span> Technical Strengths
                 </h3>
@@ -139,9 +219,13 @@ function PlacementPage() {
                     </div>
                   ))}
                 </div>
-              </div>
+              </motion.div>
 
-              <div className="bg-amber-50/50 rounded-2xl p-6 shadow-sm border border-amber-100 min-w-0">
+              <motion.div
+                animate={pulseAnimate('weaknesses')}
+                transition={{ duration: 0.35, ease: 'easeOut' }}
+                className="bg-amber-50/50 rounded-2xl p-6 shadow-sm border border-amber-100 min-w-0"
+              >
                 <h3 className="text-[16px] font-extrabold text-amber-900 mb-4 flex items-center gap-2">
                   <span className="material-symbols-outlined text-amber-500">remove_circle</span> Technical Weaknesses
                 </h3>
@@ -158,16 +242,20 @@ function PlacementPage() {
                     </div>
                   ))}
                 </div>
-              </div>
+              </motion.div>
             </div>
 
             {/* Interview Readiness */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 min-w-0">
+            <motion.div
+              animate={pulseAnimate('interview')}
+              transition={{ duration: 0.35, ease: 'easeOut' }}
+              className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 min-w-0"
+            >
               <h3 className="text-[18px] font-extrabold text-slate-900 mb-6 flex items-center gap-2">
                 <span className="material-symbols-outlined text-indigo-500">model_training</span> Interview Readiness
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                {Object.entries(dashboard.interviewReadiness || {}).map(([key, data]: [string, any]) => {
+                {Object.entries(dashboard.interviewReadiness || {}).map(([key, data]: [string, any], idx: number) => {
                   const title = key === 'cn' ? 'Computer Networks' : key === 'os' ? 'Operating Systems' : key === 'dbms' ? 'DBMS' : key === 'hr' ? 'HR / Behavioral' : key.charAt(0).toUpperCase() + key.slice(1);
                   return (
                     <div key={key} className="group" title={data.reason}>
@@ -176,17 +264,26 @@ function PlacementPage() {
                         <span className="font-black text-slate-900 text-[14px]">{data.score}%</span>
                       </div>
                       <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden mb-2">
-                        <div className={`h-full ${data.score >= 80 ? 'bg-[#00a878]' : data.score >= 50 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${data.score}%` }}></div>
+                        <motion.div
+                          className={`h-full ${data.score >= 80 ? 'bg-[#00a878]' : data.score >= 50 ? 'bg-amber-500' : 'bg-red-500'}`}
+                          initial={{ width: '0%' }}
+                          animate={{ width: interviewBarsReady ? `${data.score}%` : '0%' }}
+                          transition={{ duration: 0.8, delay: idx * 0.15, ease: 'easeOut' }}
+                        />
                       </div>
                       <p className="text-[11px] text-slate-500 leading-snug truncate group-hover:whitespace-normal group-hover:text-clip">{data.reason}</p>
                     </div>
                   );
                 })}
               </div>
-            </div>
+            </motion.div>
 
             {/* Company Eligibility */}
-            <div className="min-w-0">
+            <motion.div
+              animate={pulseAnimate('eligibility')}
+              transition={{ duration: 0.35, ease: 'easeOut' }}
+              className="min-w-0"
+            >
               <h3 className="text-[18px] font-extrabold text-slate-900 mb-6 flex items-center gap-2">
                 <span className="material-symbols-outlined text-blue-500">domain</span> Company Eligibility
               </h3>
@@ -216,7 +313,7 @@ function PlacementPage() {
                   );
                 })}
               </div>
-            </div>
+            </motion.div>
 
           </div>
 
@@ -280,17 +377,26 @@ function PlacementPage() {
 
             {/* Recruiter Feedback */}
             {dashboard.recruiterFeedback && (
-              <div className="bg-blue-50/50 rounded-2xl p-6 shadow-sm border border-blue-100 min-w-0 relative">
+              <motion.div
+                animate={pulseAnimate('recruiter')}
+                transition={{ duration: 0.35, ease: 'easeOut' }}
+                className="bg-blue-50/50 rounded-2xl p-6 shadow-sm border border-blue-100 min-w-0 relative"
+              >
                 <div className="absolute top-4 right-4 text-blue-200">
                   <span className="material-symbols-outlined text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>format_quote</span>
                 </div>
                 <h3 className="text-[13px] font-black uppercase tracking-wider flex items-center gap-2 mb-3 text-blue-600 relative z-10">
                   Recruiter Feedback
                 </h3>
-                <p className="text-[14px] font-medium text-slate-700 leading-relaxed relative z-10 italic">
+                <motion.p
+                  className="text-[14px] font-medium text-slate-700 leading-relaxed relative z-10 italic"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: recruiterRevealed ? 1 : 0, y: recruiterRevealed ? 0 : 10 }}
+                  transition={{ duration: 0.5, ease: 'easeOut' }}
+                >
                   "{dashboard.recruiterFeedback}"
-                </p>
-              </div>
+                </motion.p>
+              </motion.div>
             )}
 
           </div>

@@ -1,7 +1,49 @@
 import { createFileRoute, useRouteContext } from '@tanstack/react-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { DashboardLayout } from '../../../components/layout/DashboardLayout'
+
+const CONFETTI_COLORS = ['#00a878', '#fbbf24', '#f87171', '#60a5fa', '#a78bfa']
+
+/** Full-screen confetti that falls from wherever the button was clicked */
+function Confetti({ trigger, originX = 50 }: { trigger: number; originX?: number }) {
+  const pieces = useMemo(() => {
+    if (!trigger) return []
+    return Array.from({ length: 34 }).map((_, i) => ({
+      id: `${trigger}-${i}`,
+      x: (Math.random() - 0.5) * 340,
+      rotate: Math.random() * 720 - 360,
+      color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+      delay: Math.random() * 0.2,
+      size: 7 + Math.random() * 7,
+      round: Math.random() > 0.5,
+      duration: 1.4 + Math.random() * 0.8,
+    }))
+  }, [trigger])
+
+  return (
+    <div className="pointer-events-none fixed inset-0 z-[999] overflow-hidden">
+      <AnimatePresence>
+        {pieces.map((p) => (
+          <motion.span
+            key={p.id}
+            initial={{ opacity: 1, top: '-5%', left: `calc(${originX}% + ${p.x}px)`, rotate: 0 }}
+            animate={{ opacity: [1, 1, 0], top: '105%', rotate: p.rotate }}
+            transition={{ duration: p.duration, delay: p.delay, ease: [0.2, 0.6, 0.4, 1] }}
+            style={{
+              position: 'absolute',
+              width: p.size,
+              height: p.size,
+              backgroundColor: p.color,
+              borderRadius: p.round ? '50%' : '2px',
+            }}
+          />
+        ))}
+      </AnimatePresence>
+    </div>
+  )
+}
 
 export const Route = createFileRoute('/_authenticated/assessment/')({
   component: AssessmentPage,
@@ -16,38 +58,69 @@ function AssessmentPage() {
   const queryClient = useQueryClient();
   const [isRegenerating, setIsRegenerating] = useState(false);
 
+  // Confetti state — same approach as Career Guidance page
+  const [confettiTrigger, setConfettiTrigger] = useState(0);
+  const [confettiOriginX, setConfettiOriginX] = useState(50);
+
+  const fireConfettiFromElement = (el: HTMLElement | null) => {
+    const rect = el?.getBoundingClientRect();
+    const originX = rect ? ((rect.left + rect.width / 2) / window.innerWidth) * 100 : 50;
+    setConfettiOriginX(originX);
+    setConfettiTrigger((t) => t + 1);
+  };
+
   const { data, isLoading: loading, error, refetch } = useQuery({
     queryKey: ['assessment-data', userId, profileData?.updatedAt],
-    queryFn: async ({ signal }) => {
-      if (!userId) throw new Error("No user session found. Please log in.");
+   queryFn: async ({ signal }) => {
+  if (!userId) throw new Error("No user session found. Please log in.");
 
-      const guidanceRes = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000/api"}/career-guidance`, {
+  const API = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+
+  // Always start the career-guidance call
+  const guidancePromise = fetch(`${API}/career-guidance`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId }),
+    signal
+  }).then(res => {
+    if (!res.ok) throw new Error("Failed to fetch careers data");
+    return res.json();
+  });
+
+  // If we ALREADY know the target career, start skill-gap at the SAME time
+  // instead of waiting for career-guidance to finish first.
+  const knownCareer = profileData?.selectedCareer || profileData?.careerGoal;
+
+  const skillGapPromise = knownCareer
+    ? fetch(`${API}/skill-gap/analyze`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify({ userId, targetCareer: knownCareer }),
         signal
-      });
-      if (!guidanceRes.ok) throw new Error("Failed to fetch careers data");
+      }).then(res => (res.ok ? res.json() : null))
+    : null; // if we don't know the career yet, we'll fetch it after guidance responds
 
-      const guidanceJson = await guidanceRes.json();
-      const topCareerName = profileData?.selectedCareer || guidanceJson.topCareers?.[0]?.title || profileData?.careerGoal;
+  const guidanceJson = await guidancePromise;
+  const topCareerName = knownCareer || guidanceJson.topCareers?.[0]?.title;
 
-      const skillGapRes = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000/api"}/skill-gap/analyze`, {
+  // If skill-gap was already started above, just wait for it.
+  // Otherwise (we didn't know the career yet), fetch it now.
+  const skillGapData = skillGapPromise
+    ? await skillGapPromise
+    : await fetch(`${API}/skill-gap/analyze`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, targetCareer: topCareerName }),
         signal
-      });
+      }).then(res => (res.ok ? res.json() : null));
 
-      const skillGapData = skillGapRes.ok ? await skillGapRes.json() : null;
-
-      return {
-        profile: profileData,
-        targetCareer: topCareerName,
-        skillGap: skillGapData,
-        guidanceMeta: guidanceJson._meta
-      };
-    },
+  return {
+    profile: profileData,
+    targetCareer: topCareerName,
+    skillGap: skillGapData,
+    guidanceMeta: guidanceJson._meta
+  };
+},
     enabled: !!userId,
     staleTime: 1000 * 60 * 5,
     retry: false,
@@ -59,7 +132,8 @@ function AssessmentPage() {
     }
   });
 
-  const handleRegenerate = async () => {
+  const handleRegenerate = async (el: HTMLElement | null) => {
+    fireConfettiFromElement(el);
     setIsRegenerating(true);
     try {
       const guidanceRes = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000/api"}/career-guidance`, {
@@ -155,6 +229,7 @@ function AssessmentPage() {
 
   return (
     <DashboardLayout>
+      <Confetti trigger={confettiTrigger} originX={confettiOriginX} />
       <div className="min-w-0 w-full max-w-5xl mx-auto pb-10">
 
         {/* Page Header */}
@@ -176,7 +251,7 @@ function AssessmentPage() {
               </div>
             )}
             <button
-              onClick={handleRegenerate}
+              onClick={(e) => handleRegenerate(e.currentTarget)}
               disabled={isRegenerating || data?.guidanceMeta?.isRefreshing || data?.skillGap?._meta?.isRefreshing}
               className="flex items-center gap-2 px-4 py-2 border border-slate-200 rounded-lg text-slate-700 font-bold text-sm hover:bg-slate-50 transition-colors shadow-sm bg-white shrink-0 disabled:opacity-50"
             >
@@ -188,6 +263,22 @@ function AssessmentPage() {
 
         {/* Hero Section: Target Career & AI Insight */}
         <div className="bg-slate-900 rounded-3xl p-8 mb-8 shadow-lg border border-slate-800 text-white relative overflow-hidden flex flex-col md:flex-row items-center gap-8">
+         {/* Shimmer sweep */}
+          <motion.div
+            initial={{ x: '-100%' }}
+            animate={{ x: '700%' }}
+            transition={{ duration: 1.5, ease: 'easeInOut', delay: 0.5 }}
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '15%',
+              height: '100%',
+              background: 'linear-gradient(105deg, transparent 35%, rgba(255,215,0,0.15) 48%, rgba(255,255,255,0.25) 50%, rgba(255,215,0,0.15) 52%, transparent 65%)',
+              zIndex: 10,
+              pointerEvents: 'none',
+            }}
+          />
           <div className="absolute top-0 right-0 w-64 h-64 bg-[#00a878] rounded-full blur-[80px] opacity-20 -mr-20 -mt-20"></div>
 
           <div className="flex-1 z-10">
@@ -230,11 +321,25 @@ function AssessmentPage() {
             </h4>
             {matched.length > 0 ? (
               <div className="flex flex-wrap gap-2.5">
-                {matched.map((skill: string) => (
-                  <span key={skill} className="bg-emerald-50 text-emerald-700 px-4 py-2 rounded-xl text-sm font-bold border border-emerald-100 shadow-sm">
-                    {skill}
-                  </span>
-                ))}
+                {matched.map((skill: string, index: number) => {
+                  const directions = [
+                    { x: -50, y: 0 }, { x: 50, y: 0 },
+                    { x: 0, y: -50 }, { x: 0, y: 50 },
+                    { x: -50, y: -50 }, { x: 50, y: 50 }
+                  ]
+                  const dir = directions[index % directions.length]
+                  return (
+                    <motion.span
+                      key={skill}
+                      initial={{ opacity: 0, x: dir.x, y: dir.y }}
+                      animate={{ opacity: 1, x: 0, y: 0 }}
+                      transition={{ duration: 0.5, delay: index * 0.07, ease: 'easeOut' }}
+                      className="bg-emerald-50 text-emerald-700 px-4 py-2 rounded-xl text-sm font-bold border border-emerald-100 shadow-sm"
+                    >
+                      {skill}
+                    </motion.span>
+                  )
+                })}
               </div>
             ) : (
               <p className="text-slate-500 italic text-sm">No exact skill matches found.</p>
@@ -249,10 +354,16 @@ function AssessmentPage() {
             </h4>
             {missing.length > 0 ? (
               <div className="flex flex-wrap gap-2.5">
-                {missing.map((skill: string) => (
-                  <span key={skill} className="bg-red-50 text-red-600 px-4 py-2 rounded-xl text-sm font-bold border border-red-100 shadow-sm">
+                {missing.map((skill: string, index: number) => (
+                  <motion.span
+                    key={skill}
+                    initial={{ opacity: 0, y: -60 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, delay: index * 0.1, type: 'spring', bounce: 0.55 }}
+                    className="bg-red-50 text-red-600 px-4 py-2 rounded-xl text-sm font-bold border border-red-100 shadow-sm"
+                  >
                     {skill}
-                  </span>
+                  </motion.span>
                 ))}
               </div>
             ) : (

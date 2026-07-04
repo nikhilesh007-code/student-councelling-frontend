@@ -1,5 +1,6 @@
 import { Link, useNavigate, useRouteContext } from '@tanstack/react-router'
 import { useState, useEffect, useRef } from 'react'
+import { motion } from 'framer-motion'
 import { ChatWidget } from '../chat/ChatWidget'
 import { SupportWidget } from '../support/SupportWidget'
 import { notificationApi } from '../../lib/notification-api'
@@ -26,6 +27,131 @@ interface DashboardLayoutProps {
   onSearchChange?: (value: string) => void;
 }
 
+// A tiny glowing firefly that flies around the notification popup, then settles and fades
+function NotificationFirefly() {
+  return (
+    <motion.div
+      className="absolute w-2 h-2 rounded-full bg-[#00a878] pointer-events-none z-10"
+      style={{ boxShadow: '0 0 10px 3px rgba(0,168,120,0.8), 0 0 20px 6px rgba(0,168,120,0.35)' }}
+      initial={{ x: 140, y: -20, opacity: 0, scale: 0.5 }}
+      animate={{
+        x: [140, 40, 210, 90, 150, 158],
+        y: [-20, 40, 75, 115, 60, 52],
+        opacity: [0, 1, 1, 1, 1, 0],
+        scale: [0.5, 1, 1, 1, 1, 0.6],
+      }}
+      transition={{
+        duration: 2,
+        times: [0, 0.2, 0.45, 0.7, 0.9, 1],
+        ease: 'easeInOut',
+      }}
+    />
+  );
+}
+
+// One-time premium startup animation for the CareerAI logo:
+// background fades in -> cap falls with gravity + bounce -> ripple on landing ->
+// "Career" then "AI" (glowing) -> tiny sparkle. ~1.3s total, plays once on mount.
+function AnimatedLogo({ isCollapsed }: { isCollapsed: boolean }) {
+  return (
+    <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-3'} mb-8 transition-all duration-300`}>
+      <div className="relative w-10 h-10 shrink-0">
+        {/* Background square: fade + scale in */}
+        <motion.div
+          className="absolute inset-0 rounded-lg"
+          style={{ backgroundColor: '#00a878' }}
+          initial={{ opacity: 0, scale: 0.5 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.35, ease: 'easeOut' }}
+        />
+
+        {/* Ripple: expands outward right as the cap lands */}
+        <motion.div
+          className="absolute inset-0 rounded-lg pointer-events-none"
+          style={{ backgroundColor: '#00a878' }}
+          initial={{ opacity: 0, scale: 1 }}
+          animate={{ opacity: [0, 0.5, 0], scale: [1, 1.7, 2.1] }}
+          transition={{ duration: 0.5, delay: 0.72, ease: 'easeOut' }}
+        />
+
+        {/* Graduation cap: falls with gravity, overshoots, bounces, settles */}
+        <motion.div
+          className="absolute inset-0 flex items-center justify-center"
+          initial={{ y: -60, opacity: 0 }}
+          animate={{ y: [-60, 0, -9, 0], opacity: 1 }}
+          transition={{
+            y: { duration: 0.55, delay: 0.25, times: [0, 0.6, 0.82, 1], ease: ['easeIn', 'easeOut', 'easeOut'] },
+            opacity: { duration: 0.12, delay: 0.25 },
+          }}
+        >
+          <span className="material-symbols-outlined text-white" style={{ fontVariationSettings: "'FILL' 1" }}>
+            school
+          </span>
+        </motion.div>
+
+        {/* Tiny sparkle, top-right of the cap, fades away */}
+        <motion.span
+          className="absolute -top-1 -right-1 text-[11px] pointer-events-none leading-none"
+          style={{ color: '#c9f7e3' }}
+          initial={{ opacity: 0, scale: 0 }}
+          animate={{ opacity: [0, 1, 0], scale: [0, 1, 0.6] }}
+          transition={{ duration: 0.5, delay: 0.85, ease: 'easeOut' }}
+        >
+          ✦
+        </motion.span>
+      </div>
+
+      <div className={`flex-1 min-w-0 flex items-center transition-all duration-300 ${isCollapsed ? 'opacity-0 w-0 hidden' : 'opacity-100'}`}>
+        <motion.h1
+          className="text-xl font-bold whitespace-nowrap select-none inline-flex"
+          whileHover={{ scale: 1.05 }}
+          transition={{ type: 'spring', stiffness: 320, damping: 14 }}
+        >
+          {'Career'.split('').map((letter, i) => (
+            <motion.span
+              key={i}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25, delay: 0.4 + i * 0.045, ease: 'easeOut' }}
+            >
+              {letter}
+            </motion.span>
+          ))}
+          <motion.span
+            initial={{ opacity: 0, scale: 0.8, backgroundPositionX: '0%' }}
+            animate={{
+              opacity: 1,
+              scale: 1,
+              textShadow: [
+                '0 0 0px rgba(0,168,120,0)',
+                '0 0 10px rgba(0,168,120,0.85)',
+                '0 0 0px rgba(0,168,120,0)',
+              ],
+              backgroundPositionX: ['0%', '200%'],
+            }}
+            transition={{
+              opacity: { duration: 0.3, delay: 0.65 },
+              scale: { duration: 0.3, delay: 0.65 },
+              textShadow: { duration: 0.5, delay: 0.65 },
+              backgroundPositionX: { duration: 2.6, repeat: Infinity, ease: 'linear', delay: 1.2 },
+            }}
+            style={{
+              color: '#00a878',
+              backgroundImage: 'linear-gradient(90deg, #00a878 0%, #7fead0 25%, #00a878 50%, #7fead0 75%, #00a878 100%)',
+              backgroundSize: '200% 100%',
+              WebkitBackgroundClip: 'text',
+              backgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}
+          >
+            AI
+          </motion.span>
+        </motion.h1>
+      </div>
+    </div>
+  )
+}
+
 export function DashboardLayout({ children, searchPlaceholder, searchValue, onSearchChange }: DashboardLayoutProps) {
   const navigate = useNavigate()
   const context = useRouteContext({ strict: false }) as any;
@@ -43,6 +169,9 @@ export function DashboardLayout({ children, searchPlaceholder, searchValue, onSe
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [bellRingKey, setBellRingKey] = useState(0);
+  const [showFirefly, setShowFirefly] = useState(false);
+  const [revealContent, setRevealContent] = useState(false);
   const [showSupportWidget, setShowSupportWidget] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
@@ -255,6 +384,20 @@ export function DashboardLayout({ children, searchPlaceholder, searchValue, onSe
     }
   };
 
+  const handleBellClick = () => {
+    const opening = !showNotifications;
+    setShowNotifications(opening);
+    if (opening) {
+      setBellRingKey(k => k + 1);
+      setShowFirefly(true);
+      setRevealContent(false);
+      setTimeout(() => {
+        setShowFirefly(false);
+        setRevealContent(true);
+      }, 2000);
+    }
+  };
+
   return (
     <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", backgroundColor: '#f8fafd' }} className="text-[#1c1b1b] min-w-0 flex flex-col min-h-screen">
       <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
@@ -276,20 +419,40 @@ export function DashboardLayout({ children, searchPlaceholder, searchValue, onSe
       <aside
         style={{ backgroundColor: '#fcf9f8', width: sidebarWidth }}
         className="h-screen fixed left-0 top-0 shadow-[0px_4px_20px_rgba(0,0,0,0.04)] flex flex-col py-6 px-3 z-20 transition-all duration-300 ease-in-out overflow-hidden hidden md:flex"
+        onMouseMove={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+          e.currentTarget.style.setProperty('--x', `${x}px`);
+          e.currentTarget.style.setProperty('--y', `${y}px`);
+        }}
       >
-        <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3 px-3'} mb-8 transition-all duration-300`}>
-          <div className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: '#00a878' }}>
-            <span className="material-symbols-outlined text-white" style={{ fontVariationSettings: "'FILL' 1" }}>school</span>
-          </div>
-          <div className={`flex-1 min-w-0 flex items-center transition-all duration-300 ${isCollapsed ? 'opacity-0 w-0 hidden' : 'opacity-100'}`}>
-            <h1 className="text-xl font-bold whitespace-nowrap">Career<span style={{ color: '#00a878' }}>AI</span></h1>
-          </div>
-        </div>
+        <div
+          style={{
+            position: 'absolute',
+            left: 'var(--x, -999px)',
+            top: 'var(--y, -999px)',
+            transform: 'translate(-50%, -50%)',
+            width: 180,
+            height: 180,
+            borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(0,168,120,0.18) 0%, transparent 70%)',
+            pointerEvents: 'none',
+            zIndex: 0,
+            transition: 'left 0.08s ease, top 0.08s ease',
+          }}
+        />
+        <AnimatedLogo isCollapsed={isCollapsed} />
 
         <nav className="flex-1 overflow-y-auto sidebar-scroll space-y-2 overflow-x-hidden">
-          {navItems.map((item) => (
-            <Link
+          {navItems.map((item, index) => (
+            <motion.div
               key={item.label}
+              initial={{ opacity: 0, x: -30 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.3, delay: index * 0.05 }}
+            >
+            <Link
               to={item.to as any}
               title={isCollapsed ? item.label : undefined}
               className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'justify-between px-3'} py-2.5 text-left rounded-lg transition-colors text-[#50606f] hover:text-[#006c4c] hover:bg-[#f6f3f2]`}
@@ -302,6 +465,7 @@ export function DashboardLayout({ children, searchPlaceholder, searchValue, onSe
                 {!isCollapsed && <span className="text-sm whitespace-nowrap">{item.label}</span>}
               </div>
             </Link>
+            </motion.div>
           ))}
         </nav>
 
@@ -391,10 +555,18 @@ export function DashboardLayout({ children, searchPlaceholder, searchValue, onSe
           {/* Notification Bell */}
           <div className="relative" ref={dropdownRef}>
             <button 
-              onClick={() => setShowNotifications(!showNotifications)}
+              onClick={handleBellClick}
               className="text-[#50606f] hover:bg-[#e5e2e1] rounded-full p-2 transition-all relative"
             >
-              <span className="material-symbols-outlined">notifications</span>
+              <motion.span
+                key={bellRingKey}
+                className="material-symbols-outlined"
+                style={{ display: 'inline-block', transformOrigin: '50% 0%' }}
+                animate={bellRingKey > 0 ? { rotate: [0, -15, 12, -10, 8, -4, 0] } : {}}
+                transition={{ duration: 0.6, ease: 'easeInOut' }}
+              >
+                notifications
+              </motion.span>
               {unreadCount > 0 && (
                 <span className="absolute top-1.5 right-1.5 min-w-[14px] h-[14px] px-[3px] bg-red-500 border border-white text-white text-[9px] font-bold rounded-full flex items-center justify-center">
                   {unreadCount > 99 ? '99+' : unreadCount}
@@ -412,31 +584,45 @@ export function DashboardLayout({ children, searchPlaceholder, searchValue, onSe
                     </button>
                   )}
                 </div>
-                <div className="max-h-[350px] overflow-y-auto">
-                  {notifications.length === 0 ? (
-                    <div className="p-6 text-center text-slate-500 text-sm">
-                      <span className="material-symbols-outlined text-4xl mb-2 text-slate-200">notifications_off</span>
-                      <p>No new notifications</p>
-                    </div>
-                  ) : (
-                    notifications.map(n => (
-                      <div 
-                        key={n.id} 
-                        onClick={() => handleNotificationClick(n)}
-                        className="p-4 border-b border-slate-50 hover:bg-slate-50 cursor-pointer flex gap-3 items-start transition-colors"
+                <div className="max-h-[350px] overflow-y-auto relative">
+                  {showFirefly && <NotificationFirefly />}
+                  {revealContent && (
+                    notifications.length === 0 ? (
+                      <motion.div
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.45, ease: 'easeOut' }}
+                        className="p-6 text-center text-slate-500 text-sm"
                       >
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${getColorForPriority(n.priority)}`}>
-                          <span className="material-symbols-outlined text-[16px]">{getIconForModule(n.module) || n.icon || 'notifications'}</span>
-                        </div>
-                        <div className="min-w-0">
-                          <h4 className="text-[13px] font-extrabold text-slate-800 mb-0.5 truncate">{n.title}</h4>
-                          <p className="text-[12px] text-slate-500 line-clamp-2 leading-snug">{n.message}</p>
-                          <span className="text-[10px] text-slate-400 font-medium mt-1 block">
-                            {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                      </div>
-                    ))
+                        <span className="material-symbols-outlined text-4xl mb-2 text-slate-200">notifications_off</span>
+                        <p>No new notifications</p>
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        initial={{ opacity: 0, y: 12 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.45, ease: 'easeOut' }}
+                      >
+                        {notifications.map(n => (
+                          <div 
+                            key={n.id} 
+                            onClick={() => handleNotificationClick(n)}
+                            className="p-4 border-b border-slate-50 hover:bg-slate-50 cursor-pointer flex gap-3 items-start transition-colors"
+                          >
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${getColorForPriority(n.priority)}`}>
+                              <span className="material-symbols-outlined text-[16px]">{getIconForModule(n.module) || n.icon || 'notifications'}</span>
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="text-[13px] font-extrabold text-slate-800 mb-0.5 truncate">{n.title}</h4>
+                              <p className="text-[12px] text-slate-500 line-clamp-2 leading-snug">{n.message}</p>
+                              <span className="text-[10px] text-slate-400 font-medium mt-1 block">
+                                {new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </motion.div>
+                    )
                   )}
                 </div>
                 <div className="p-3 bg-slate-50 border-t border-slate-100 text-center">

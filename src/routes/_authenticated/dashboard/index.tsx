@@ -2,6 +2,7 @@ import { createFileRoute, useRouteContext, Link } from '@tanstack/react-router'
 import { useQuery } from '@tanstack/react-query'
 import { DashboardLayout } from '../../../components/layout/DashboardLayout'
 import { useEffect, useState, useMemo } from 'react'
+import { motion } from 'framer-motion'
 
 export const Route = createFileRoute('/_authenticated/dashboard/')({
   component: Dashboard,
@@ -310,11 +311,19 @@ function Dashboard() {
       searchValue={searchTerm}
       onSearchChange={setSearchTerm}
     >
-      <div className="max-w-[1400px] mx-auto flex flex-col gap-8 pb-16">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3 }}
+        className="max-w-[1400px] mx-auto flex flex-col gap-8 pb-16">
         
         {/* HEADER & MOTIVATION */}
         {showWidget('Overview', ['home']) && (
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-2">
+          <motion.div
+            initial={{ opacity: 0, x: -80 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8, ease: 'easeOut', delay: 0.1 }}
+            className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-2">
             <div>
               <h2 className="text-[36px] font-extrabold text-slate-900 tracking-tight leading-tight">{greetingInfo.greeting}, {userName}</h2>
               <p className="text-[16px] text-slate-500 font-medium mt-2 flex items-center gap-2">
@@ -330,10 +339,14 @@ function Dashboard() {
                  <p className="text-[12px] font-bold text-emerald-600 mt-2">— {MOTIVATIONAL_QUOTES[quoteIdx].author}</p>
                </div>
             </div>
-          </div>
+          </motion.div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.7, ease: 'easeOut', delay: 0.3 }}
+            className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
           {/* LEFT COLUMN: CONTINUE, INSIGHT, DID YOU KNOW (Col span 4) */}
           <div className="lg:col-span-4 flex flex-col gap-6">
@@ -398,9 +411,14 @@ function Dashboard() {
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {MODULES.map((mod) => (
+                  {MODULES.map((mod, index) => (
+                    <motion.div
+                      key={mod.id}
+                      initial={{ opacity: 0, y: 30 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.4, delay: 0.4 + index * 0.07 }}
+                    >
                     <Link 
-                      key={mod.id} 
                       to={mod.link}
                       className="bg-white border border-slate-100 rounded-3xl p-6 flex items-start gap-5 group hover:border-emerald-300 hover:shadow-lg hover:-translate-y-1.5 transition-all duration-300"
                     >
@@ -415,6 +433,7 @@ function Dashboard() {
                         <span className="material-symbols-outlined">arrow_forward</span>
                       </div>
                     </Link>
+                    </motion.div>
                   ))}
                 </div>
               </div>
@@ -509,9 +528,9 @@ function Dashboard() {
 
           </div>
 
-        </div>
+        </motion.div>
 
-      </div>
+      </motion.div>
     </DashboardLayout>
   )
 }

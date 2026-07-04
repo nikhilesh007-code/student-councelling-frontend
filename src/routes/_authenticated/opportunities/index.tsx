@@ -1,12 +1,34 @@
 import { createFileRoute, useRouteContext } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { DashboardLayout } from '../../../components/layout/DashboardLayout'
 import { format } from 'date-fns'
+import { motion, type Variants } from 'framer-motion'
 
 export const Route = createFileRoute('/_authenticated/opportunities/')({
   component: OpportunitiesPage,
 })
+
+// ---------- Animation variants ----------
+const cardContainerVariants: Variants = {
+  hidden: {},
+  visible: { transition: { staggerChildren: 0.12 } },
+}
+
+const cardItemVariants: Variants = {
+  hidden: { opacity: 0, y: 24 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: 'easeOut' } },
+}
+
+const sweepVariants: Variants = {
+  hidden: { x: '-120%', opacity: 0 },
+  visible: { x: '120%', opacity: [0, 1, 0], transition: { duration: 0.7, ease: 'easeOut' } },
+}
+
+const badgeVariants: Variants = {
+  hidden: { scale: 1 },
+  visible: { scale: [1, 1.25, 1], transition: { duration: 0.5, ease: 'easeOut', delay: 0.15 } },
+}
 
 function CompanyLogo({ logo, company, size = "large" }: { logo?: string; company: string; size?: "small" | "medium" | "large" }) {
   const [imgError, setImgError] = useState(false);
@@ -162,6 +184,38 @@ function OpportunitiesPage() {
   
   const [selectedOpp, setSelectedOpp] = useState<any>(null);
 
+  // ---------- Intro animation state ----------
+  const headerRef = useRef<HTMLDivElement>(null);
+  const targetRef = useRef<HTMLSpanElement>(null);
+  const [targetPos, setTargetPos] = useState<{ x: number; y: number } | null>(null);
+  const [arrowActive, setArrowActive] = useState(false);
+  const [targetHit, setTargetHit] = useState(false);
+  const [cardsReady, setCardsReady] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const header = headerRef.current;
+      const target = targetRef.current;
+      if (!header || !target) return;
+      const headerRect = header.getBoundingClientRect();
+      const targetRect = target.getBoundingClientRect();
+      setTargetPos({
+        x: targetRect.left + targetRect.width / 2 - headerRect.left,
+        y: targetRect.top + targetRect.height / 2 - headerRect.top,
+      });
+      setArrowActive(true);
+    }, 450); // let the title finish fading in first
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleArrowArrived = () => {
+    setArrowActive(false);
+    setTargetHit(true);
+    setCardsReady(true);
+    setTimeout(() => setTargetHit(false), 1000);
+  };
+
   const { data: response, isLoading, error } = useQuery({
     queryKey: ['opportunities', userId, sortBy, searchQuery],
     queryFn: async () => {
@@ -183,13 +237,81 @@ function OpportunitiesPage() {
       <div className="min-w-0 w-full max-w-7xl mx-auto pb-10">
         
         {/* Header */}
-        <div className="mb-8">
-          <h2 className="text-3xl font-extrabold text-slate-900 mb-2 flex items-center gap-3">
-            Opportunities <span className="text-2xl">🎯</span>
-          </h2>
+        <div ref={headerRef} className="mb-8 relative">
+          <motion.h2
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: 'easeOut' }}
+            className="text-3xl font-extrabold text-slate-900 mb-2 flex items-center gap-3"
+          >
+            Opportunities{' '}
+            <motion.span
+              ref={targetRef}
+              className="text-2xl inline-block"
+              animate={
+                targetHit
+                  ? {
+                      scale: [1, 1.4, 0.95, 1.1, 1],
+                      filter: [
+                        'drop-shadow(0 0 0px rgba(0,168,120,0))',
+                        'drop-shadow(0 0 10px rgba(0,168,120,0.9))',
+                        'drop-shadow(0 0 10px rgba(0,168,120,0.9))',
+                        'drop-shadow(0 0 4px rgba(0,168,120,0.5))',
+                        'drop-shadow(0 0 0px rgba(0,168,120,0))',
+                      ],
+                    }
+                  : {}
+              }
+              transition={{ duration: 1, ease: 'easeInOut' }}
+            >
+              🎯
+            </motion.span>
+          </motion.h2>
           <p className="text-sm font-medium text-slate-500">
             Real opportunities fetched and personalized for you.
           </p>
+
+          {/* Flying arrow */}
+          {targetPos && arrowActive && (
+            <motion.span
+              className="material-symbols-outlined absolute text-[#00a878] pointer-events-none z-20"
+              style={{ fontSize: 28, top: targetPos.y - 14, left: 0 }}
+              initial={{ x: -100, opacity: 0 }}
+              animate={{ x: targetPos.x - 14, opacity: [0, 1, 1] }}
+              transition={{ duration: 0.6, ease: 'easeIn' }}
+              onAnimationComplete={handleArrowArrived}
+            >
+              arrow_forward
+            </motion.span>
+          )}
+
+          {/* Impact ripple + particles */}
+          {targetPos && targetHit && (
+            <>
+              <motion.span
+                className="absolute rounded-full border-2 border-[#00a878] pointer-events-none"
+                style={{ left: targetPos.x - 20, top: targetPos.y - 20, width: 40, height: 40 }}
+                initial={{ scale: 0.3, opacity: 0.8 }}
+                animate={{ scale: 2.2, opacity: 0 }}
+                transition={{ duration: 0.7, ease: 'easeOut' }}
+              />
+              {[0, 60, 120, 180, 240, 300].map((angle) => {
+                const rad = (angle * Math.PI) / 180;
+                const dx = Math.cos(rad) * 30;
+                const dy = Math.sin(rad) * 30;
+                return (
+                  <motion.span
+                    key={angle}
+                    className="absolute w-1.5 h-1.5 rounded-full bg-[#00a878] pointer-events-none"
+                    style={{ left: targetPos.x, top: targetPos.y, boxShadow: '0 0 6px rgba(0,168,120,0.8)' }}
+                    initial={{ x: 0, y: 0, opacity: 1 }}
+                    animate={{ x: dx, y: dy, opacity: 0 }}
+                    transition={{ duration: 0.6, ease: 'easeOut' }}
+                  />
+                );
+              })}
+            </>
+          )}
         </div>
 
         <div className="space-y-10 min-w-0">
@@ -229,10 +351,26 @@ function OpportunitiesPage() {
                   <div className="h-64 bg-slate-100 animate-pulse rounded-3xl hidden lg:block"></div>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <motion.div
+                  className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+                  variants={cardContainerVariants}
+                  initial="hidden"
+                  animate={cardsReady ? 'visible' : 'hidden'}
+                >
                   {opportunities.map((opp: any) => (
-                    <div key={opp.id} onClick={() => setSelectedOpp(opp)} className="bg-white border border-slate-200 rounded-3xl p-6 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer relative group flex flex-col min-h-[260px]">
-                      
+                    <motion.div
+                      key={opp.id}
+                      variants={cardItemVariants}
+                      onClick={() => setSelectedOpp(opp)}
+                      className="bg-white border border-slate-200 rounded-3xl p-6 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer relative overflow-hidden group flex flex-col min-h-[260px]"
+                    >
+                      {/* Soft green glow sweeping across the card as it unlocks */}
+                      <motion.div
+                        variants={sweepVariants}
+                        className="absolute inset-0 pointer-events-none"
+                        style={{ background: 'linear-gradient(100deg, transparent 30%, rgba(0,168,120,0.18) 50%, transparent 70%)' }}
+                      />
+
                       <div className="flex justify-between items-start mb-4">
                         <div className="flex items-center gap-3 min-w-0">
                           <CompanyLogo logo={opp.companyLogo} company={opp.company} size="medium" />
@@ -253,10 +391,10 @@ function OpportunitiesPage() {
                               else if (matchVal >= 70) badgeTheme = "bg-amber-50 text-amber-700 border-amber-200";
 
                               return (
-                                <div className={`px-3 py-1.5 rounded-xl border flex items-center gap-1 mb-2 ${badgeTheme}`}>
+                                <motion.div variants={badgeVariants} className={`px-3 py-1.5 rounded-xl border flex items-center gap-1 mb-2 ${badgeTheme}`}>
                                    <span className="material-symbols-outlined text-[16px]">psychology</span>
                                    <span className="font-extrabold text-sm">{matchVal}%</span>
-                                </div>
+                                </motion.div>
                               );
                            })()}
                         </div>
@@ -282,7 +420,7 @@ function OpportunitiesPage() {
                           </span>
                         )}
                       </div>
-                    </div>
+                    </motion.div>
                   ))}
                   {!isLoading && opportunities.length === 0 && (
                      <div className="col-span-1 md:col-span-2 lg:col-span-3 text-center py-12 bg-white rounded-3xl border border-slate-200 border-dashed">
@@ -291,7 +429,7 @@ function OpportunitiesPage() {
                         <p className="text-sm text-slate-500 mt-1">Try changing your search query or career goal.</p>
                      </div>
                   )}
-                </div>
+                </motion.div>
               )}
             </div>
           </div>
