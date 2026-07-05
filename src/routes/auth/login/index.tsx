@@ -28,17 +28,29 @@ function CareerAILogin() {
     setError('')
     setIsLoading(true)
     try {
-      const response = await authClient.signIn.email({ email, password, rememberMe })
-      const { data, error: signInError } = response;
-      if (signInError) {
-        setError(signInError.message || 'Login failed')
-      } else {
-        if (search.redirect) {
-          window.location.href = search.redirect
-        } else {
-          navigate({ to: '/dashboard' })
-        }
-      }
+     const response = await authClient.signIn.email({
+  email,
+  password,
+  rememberMe,
+});
+
+console.log("FULL LOGIN RESPONSE:", response);
+
+const { data, error: signInError } = response;
+
+if (signInError) {
+  console.log("LOGIN ERROR:", signInError);
+  setError(JSON.stringify(signInError, null, 2));
+  return;
+}
+
+console.log("LOGIN SUCCESS:", data);
+
+if (search.redirect) {
+  window.location.href = search.redirect;
+} else {
+  navigate({ to: "/dashboard" });
+}
     } catch (err) {
       setError('An unexpected error occurred during login.')
     } finally {
