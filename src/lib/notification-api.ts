@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const API_URL = import.meta.env.VITE_API_URL;
 
 export const notificationApi = {
   getNotifications: async (userId: string, options: { page?: number; limit?: number; module?: string; read?: boolean; search?: string } = {}) => {

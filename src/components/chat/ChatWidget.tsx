@@ -58,7 +58,7 @@ export const ChatWidget: React.FC = () => {
   const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000/api"}/auth/get-session`, { credentials: "include" })
+    fetch(`${import.meta.env.VITE_API_URL}/auth/get-session`, { credentials: "include" })
       .then(res => res.json())
       .then(data => {
         if (data?.user?.id) {
@@ -115,7 +115,7 @@ export const ChatWidget: React.FC = () => {
     }, 30000);
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000/api"}/chat`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, message: messageText }),

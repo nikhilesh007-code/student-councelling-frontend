@@ -26,8 +26,7 @@ export default tseslint.config(
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
       'react-hooks/purity': 'warn',
-      'react-hooks/set-state-in-effect': 'warn',
-      'react-compiler/react-compiler': 'warn'
+      'react-hooks/set-state-in-effect': 'warn'
     },
   },
 )

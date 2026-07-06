@@ -10,7 +10,7 @@ export const Route = createFileRoute('/_authenticated/resume/')({
   component: ResumeAnalysisPage,
 })
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+const API_URL = import.meta.env.VITE_API_URL
 
 // ---------- Animation variants (reused across the results dashboard) ----------
 const containerVariants: Variants = {

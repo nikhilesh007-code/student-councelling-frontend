@@ -291,7 +291,7 @@ function CareerGuidancePage() {
     queryFn: async ({ signal }) => {
       if (!userId) throw new Error("No user ID found");
 
-      const guidanceRes = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000/api"}/career-guidance`, {
+      const guidanceRes = await fetch(`${import.meta.env.VITE_API_URL}/career-guidance`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -336,7 +336,7 @@ function CareerGuidancePage() {
     setFlashTrigger((t) => t + 1);
     setIsRegenerating(true);
     try {
-      const guidanceRes = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000/api"}/career-guidance`, {
+      const guidanceRes = await fetch(`${import.meta.env.VITE_API_URL}/career-guidance`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -367,7 +367,7 @@ function CareerGuidancePage() {
   const handleSetTargetCareer = async (careerTitle: string, el: HTMLElement | null) => {
     setIsSettingTarget(true);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000/api"}/profile/target-career`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/profile/target-career`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

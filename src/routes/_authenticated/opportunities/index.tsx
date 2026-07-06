@@ -219,7 +219,7 @@ function OpportunitiesPage() {
   const { data: response, isLoading, error } = useQuery({
     queryKey: ['opportunities', userId, sortBy, searchQuery],
     queryFn: async () => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000/api"}/opportunities`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/opportunities`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",

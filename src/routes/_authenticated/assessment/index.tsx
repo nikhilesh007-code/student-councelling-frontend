@@ -74,7 +74,7 @@ function AssessmentPage() {
    queryFn: async ({ signal }) => {
   if (!userId) throw new Error("No user session found. Please log in.");
 
-  const API = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+  const API = import.meta.env.VITE_API_URL;
 
   // Always start the career-guidance call
   const guidancePromise = fetch(`${API}/career-guidance`, {
@@ -136,7 +136,7 @@ function AssessmentPage() {
     fireConfettiFromElement(el);
     setIsRegenerating(true);
     try {
-      const guidanceRes = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000/api"}/career-guidance`, {
+      const guidanceRes = await fetch(`${import.meta.env.VITE_API_URL}/career-guidance`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, regenerate: true })
@@ -144,7 +144,7 @@ function AssessmentPage() {
 
       const topCareerName = profileData?.selectedCareer || guidanceRes.topCareers?.[0]?.title || profileData?.careerGoal;
 
-      const skillGapRes = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000/api"}/skill-gap/analyze`, {
+      const skillGapRes = await fetch(`${import.meta.env.VITE_API_URL}/skill-gap/analyze`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId, targetCareer: topCareerName, regenerate: true })

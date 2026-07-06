@@ -9,7 +9,7 @@ export const Route = createFileRoute('/_authenticated/progress/')({
   component: ProgressTrackingPage,
 })
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+const API_URL = import.meta.env.VITE_API_URL
 
 async function fetchProgressData() {
   const session = await authClient.getSession();

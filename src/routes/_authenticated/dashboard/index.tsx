@@ -209,7 +209,7 @@ function Dashboard() {
   const { data: profileData } = useQuery({
     queryKey: ['profile', userId],
     queryFn: async () => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000/api"}/profile/${userId}`);
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/profile/${userId}`);
       if (!res.ok) throw new Error("Failed to fetch profile");
       const json = await res.json();
       return json.data;
@@ -220,7 +220,7 @@ function Dashboard() {
   const { data: skillGapData } = useQuery({
     queryKey: ['skillGap', userId],
     queryFn: async () => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000/api"}/skill-gap/analyze`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/skill-gap/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId })
@@ -235,7 +235,7 @@ function Dashboard() {
   const { data: roadmapData } = useQuery({
     queryKey: ['roadmap', userId],
     queryFn: async () => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000/api"}/roadmap?userId=${userId}`);
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/roadmap?userId=${userId}`);
       if (!res.ok) throw new Error("Failed to fetch roadmap");
       const json = await res.json();
       return json.data;
@@ -246,7 +246,7 @@ function Dashboard() {
   const { data: tasksData } = useQuery({
     queryKey: ['plannerTasks', userId],
     queryFn: async () => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000/api"}/study-planner/tasks?userId=${userId}`);
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/study-planner/tasks?userId=${userId}`);
       if (!res.ok) throw new Error("Failed to fetch tasks");
       const json = await res.json();
       return json.tasks?.tasks || [];
@@ -257,7 +257,7 @@ function Dashboard() {
   const { data: notificationsData } = useQuery({
     queryKey: ['notifications', userId],
     queryFn: async () => {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000/api"}/notifications?userId=${userId}`);
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/notifications?userId=${userId}`);
       if (!res.ok) throw new Error("Failed to fetch notifications");
       const json = await res.json();
       return json.data || [];

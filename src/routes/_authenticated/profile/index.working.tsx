@@ -97,8 +97,8 @@ function ProfilePage() {
     queryFn: async () => {
        if (!sessionData?.user?.id) return null;
        const [careersRes, skillGapRes] = await Promise.all([
-          fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000/api"}/careers?userId=${sessionData.user.id}`, { credentials: "include" }).catch(() => null),
-          fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000/api"}/skill-gap/analyze`, {
+          fetch(`${import.meta.env.VITE_API_URL}/careers?userId=${sessionData.user.id}`, { credentials: "include" }).catch(() => null),
+          fetch(`${import.meta.env.VITE_API_URL}/skill-gap/analyze`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: "include",
@@ -174,7 +174,7 @@ function ProfilePage() {
 
     setIsSaving(true)
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000/api"}/profile`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/profile`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -213,7 +213,7 @@ function ProfilePage() {
       const formDataUpload = new FormData();
       formDataUpload.append("resume", file);
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000/api"}/profile/resume`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/profile/resume`, {
         method: "POST",
         credentials: "include",
         body: formDataUpload,

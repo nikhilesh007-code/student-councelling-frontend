@@ -14,7 +14,7 @@ export const Route = createFileRoute('/_authenticated')({
   beforeLoad: async ({ location }): Promise<AuthenticatedContext> => {
     // 1. Frontend-only mode: Remove Better Auth session fetch, use mock user directly
     const sessionResponse = await fetch(
-  `${import.meta.env.VITE_API_URL || "http://localhost:3000/api"}/auth/get-session`,
+  `${import.meta.env.VITE_API_URL}/auth/get-session`,
   {
     credentials: "include",
   }
@@ -28,7 +28,7 @@ const sessionUser = sessionData?.user ?? null;
     
     if (sessionUser?.id) {
         try {
-            const profileResponse = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000/api"}/profile/${sessionUser.id}`, {
+            const profileResponse = await fetch(`${import.meta.env.VITE_API_URL}/profile/${sessionUser.id}`, {
                 credentials: "include",
             });
             const result = await profileResponse.json();

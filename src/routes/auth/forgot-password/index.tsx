@@ -21,7 +21,7 @@ function ForgotPassword() {
     setIsLoading(true)
 
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3000/api'}/auth/forgot-password`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })

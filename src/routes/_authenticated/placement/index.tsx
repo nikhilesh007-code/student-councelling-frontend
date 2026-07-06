@@ -9,7 +9,7 @@ export const Route = createFileRoute('/_authenticated/placement/')({
   component: PlacementPage,
 })
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+const API_URL = import.meta.env.VITE_API_URL
 
 async function fetchPlacementDashboard(userId: string) {
   const res = await fetch(`${API_URL}/placement/dashboard`, {

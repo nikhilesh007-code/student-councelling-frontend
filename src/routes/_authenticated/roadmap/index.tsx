@@ -8,7 +8,7 @@ export const Route = createFileRoute('/_authenticated/roadmap/')({
   component: RoadmapPage,
 })
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api'
+const API_URL = import.meta.env.VITE_API_URL
 
 // Total time the "AI activation" beam takes to travel from Phase 1 to the last phase
 const BEAM_DURATION = 2.6

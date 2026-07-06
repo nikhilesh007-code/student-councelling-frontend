@@ -262,7 +262,7 @@ function ResourcesPage() {
     queryKey: ['resources', userId, profileData?.updatedAt],
     queryFn: async () => {
       if (!userId) throw new Error("No user ID found");
-      const res = await fetch(`${import.meta.env.VITE_API_URL || "http://localhost:3000/api"}/learning-resources`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/learning-resources`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
