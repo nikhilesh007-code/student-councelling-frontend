@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://student-councelling-backend-cf7j.onrender.com/api/"
+    }
+  ]
+}
